@@ -848,7 +848,7 @@ dependencies = [
 [[package]]
 name = "oxidx"
 version = "0.3.2"
-source = "git+https://github.com/if0ne/oxidx#80bb85a9f5e4fa133e53a0c724de51c243e4da46"
+source = "git+https://github.com/if0ne/oxidx#f8b5ce12b35e7b3263626edbfbae67adc467f311"
 dependencies = [
  "bitflags 2.6.0",
  "compact_str",
