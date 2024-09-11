@@ -1,21 +1,21 @@
 use std::ptr::NonNull;
 
-use oxidx::dx::*;
+use oxidx::dx::{self, IDevice, IResource};
 
 #[derive(Debug)]
 pub struct ConstantBuffer<T: Clone + Copy> {
-    buffer: Resource,
+    buffer: dx::Resource,
     mapped_data: NonNull<ConstantDataWrapper<T>>,
     size: usize,
 }
 
 impl<T: Clone + Copy> ConstantBuffer<T> {
-    pub fn new(device: &Device, size: usize) -> Self {
+    pub fn new(device: &dx::Device, size: usize) -> Self {
         let element_byte_size = size_of::<ConstantDataWrapper<T>>();
         Self::new_inner(device, size, element_byte_size)
     }
 
-    pub fn resource(&self) -> &Resource {
+    pub fn resource(&self) -> &dx::Resource {
         &self.buffer
     }
 
@@ -50,13 +50,13 @@ impl<T: Clone + Copy> ConstantBuffer<T> {
 }
 
 impl<T: Clone + Copy> ConstantBuffer<T> {
-    fn new_inner(device: &Device, size: usize, element_byte_size: usize) -> Self {
-        let resource: Resource = device
+    fn new_inner(device: &dx::Device, size: usize, element_byte_size: usize) -> Self {
+        let resource: dx::Resource = device
             .create_committed_resource(
-                &HeapProperties::upload(),
-                HeapFlags::empty(),
-                &ResourceDesc::buffer(size * element_byte_size),
-                ResourceStates::GenericRead,
+                &dx::HeapProperties::upload(),
+                dx::HeapFlags::empty(),
+                &dx::ResourceDesc::buffer(size * element_byte_size),
+                dx::ResourceStates::GenericRead,
                 None,
             )
             .unwrap();

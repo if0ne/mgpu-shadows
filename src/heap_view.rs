@@ -2,19 +2,15 @@
 
 use std::marker::PhantomData;
 
-use oxidx::dx::{
-    DepthStencilViewDesc, DescriptorHeap, DescriptorHeapDesc, DescriptorHeapFlags,
-    DescriptorHeapType, Device, GpuDescriptorHandle, IDescriptorHeap, IDevice,
-    RenderTargetViewDesc, Resource,
-};
+use oxidx::dx::{self, IDescriptorHeap, IDevice};
 
 #[derive(Clone, Copy, Debug)]
 pub struct HeapViewHandle(usize);
 
 #[derive(Debug)]
-pub struct HeapView<T: HeapViewType> {
-    device: Device,
-    inner: Vec<DescriptorHeap>,
+pub struct DescriptorHeap<T: DescriptorHeapType> {
+    device: dx::Device,
+    inner: Vec<dx::DescriptorHeap>,
     chunk_size: usize,
     allocated: usize,
     increment_size: usize,
@@ -22,14 +18,14 @@ pub struct HeapView<T: HeapViewType> {
     _marker: PhantomData<T>,
 }
 
-impl<T: HeapViewType> HeapView<T> {
+impl<T: DescriptorHeapType> DescriptorHeap<T> {
     fn inner_new(
-        device: Device,
+        device: dx::Device,
         chunk_size: usize,
-        desc: &DescriptorHeapDesc,
+        desc: &dx::DescriptorHeapDesc,
         increment_size: usize,
     ) -> Self {
-        let base: DescriptorHeap = device.create_descriptor_heap(desc).unwrap();
+        let base: dx::DescriptorHeap = device.create_descriptor_heap(desc).unwrap();
 
         Self {
             device,
@@ -57,21 +53,22 @@ impl<T: HeapViewType> HeapView<T> {
     }
 }
 
-impl HeapView<RtvHeapView> {
-    pub fn rtv(device: Device, chunk_size: usize) -> Self {
-        let increment_size = device.get_descriptor_handle_increment_size(DescriptorHeapType::Rtv);
+impl DescriptorHeap<RtvHeapView> {
+    pub fn rtv(device: dx::Device, chunk_size: usize) -> Self {
+        let increment_size =
+            device.get_descriptor_handle_increment_size(dx::DescriptorHeapType::Rtv);
         Self::inner_new(
             device,
             chunk_size,
-            &DescriptorHeapDesc::rtv(chunk_size),
+            &dx::DescriptorHeapDesc::rtv(chunk_size),
             increment_size,
         )
     }
 
     pub fn push(
         &mut self,
-        resource: &Resource,
-        desc: Option<&RenderTargetViewDesc>,
+        resource: &dx::Resource,
+        desc: Option<&dx::RenderTargetViewDesc>,
     ) -> HeapViewHandle {
         if let Some(free) = self.free_list.pop() {
             self.allocated += 1;
@@ -79,9 +76,9 @@ impl HeapView<RtvHeapView> {
         }
 
         if self.inner.len() <= self.allocated / self.chunk_size {
-            let base: DescriptorHeap = self
+            let base: dx::DescriptorHeap = self
                 .device
-                .create_descriptor_heap(&DescriptorHeapDesc::rtv(self.chunk_size))
+                .create_descriptor_heap(&dx::DescriptorHeapDesc::rtv(self.chunk_size))
                 .unwrap();
             self.inner.push(base);
         }
@@ -100,21 +97,22 @@ impl HeapView<RtvHeapView> {
     }
 }
 
-impl HeapView<DsvHeapView> {
-    pub fn dsv(device: Device, chunk_size: usize) -> Self {
-        let increment_size = device.get_descriptor_handle_increment_size(DescriptorHeapType::Dsv);
+impl DescriptorHeap<DsvHeapView> {
+    pub fn dsv(device: dx::Device, chunk_size: usize) -> Self {
+        let increment_size =
+            device.get_descriptor_handle_increment_size(dx::DescriptorHeapType::Dsv);
         Self::inner_new(
             device,
             chunk_size,
-            &DescriptorHeapDesc::dsv(chunk_size),
+            &dx::DescriptorHeapDesc::dsv(chunk_size),
             increment_size,
         )
     }
 
     pub fn push(
         &mut self,
-        resource: &Resource,
-        desc: Option<&DepthStencilViewDesc>,
+        resource: &dx::Resource,
+        desc: Option<&dx::DepthStencilViewDesc>,
     ) -> HeapViewHandle {
         if let Some(free) = self.free_list.pop() {
             self.allocated += 1;
@@ -122,9 +120,9 @@ impl HeapView<DsvHeapView> {
         }
 
         if self.inner.len() <= self.allocated / self.chunk_size {
-            let base: DescriptorHeap = self
+            let base: dx::DescriptorHeap = self
                 .device
-                .create_descriptor_heap(&DescriptorHeapDesc::dsv(self.chunk_size))
+                .create_descriptor_heap(&dx::DescriptorHeapDesc::dsv(self.chunk_size))
                 .unwrap();
             self.inner.push(base);
         }
@@ -143,23 +141,23 @@ impl HeapView<DsvHeapView> {
     }
 }
 
-impl HeapView<CbvSrvUavHeapView> {
-    pub fn cbr_srv_uav(device: Device, chunk_size: usize) -> Self {
+impl DescriptorHeap<CbvSrvUavHeapView> {
+    pub fn cbr_srv_uav(device: dx::Device, chunk_size: usize) -> Self {
         let increment_size =
-            device.get_descriptor_handle_increment_size(DescriptorHeapType::CbvSrvUav);
+            device.get_descriptor_handle_increment_size(dx::DescriptorHeapType::CbvSrvUav);
         Self::inner_new(
             device,
             chunk_size,
-            &DescriptorHeapDesc::cbr_srv_uav(chunk_size)
-                .with_flags(DescriptorHeapFlags::ShaderVisible),
+            &dx::DescriptorHeapDesc::cbr_srv_uav(chunk_size)
+                .with_flags(dx::DescriptorHeapFlags::ShaderVisible),
             increment_size,
         )
     }
 
     pub fn push(
         &mut self,
-        resource: &Resource,
-        desc: Option<&DepthStencilViewDesc>,
+        resource: &dx::Resource,
+        desc: Option<&dx::DepthStencilViewDesc>,
     ) -> HeapViewHandle {
         if let Some(free) = self.free_list.pop() {
             self.allocated += 1;
@@ -167,9 +165,9 @@ impl HeapView<CbvSrvUavHeapView> {
         }
 
         if self.inner.len() <= self.allocated / self.chunk_size {
-            let base: DescriptorHeap = self
+            let base: dx::DescriptorHeap = self
                 .device
-                .create_descriptor_heap(&DescriptorHeapDesc::cbr_srv_uav(self.chunk_size))
+                .create_descriptor_heap(&dx::DescriptorHeapDesc::cbr_srv_uav(self.chunk_size))
                 .unwrap();
             self.inner.push(base);
         }
@@ -187,7 +185,7 @@ impl HeapView<CbvSrvUavHeapView> {
         handle
     }
 
-    pub fn get(&mut self, handle: HeapViewHandle) -> GpuDescriptorHandle {
+    pub fn get(&mut self, handle: HeapViewHandle) -> dx::GpuDescriptorHandle {
         if handle.0 >= self.allocated {
             panic!(
                 "HeapView<{}>: Index out of bounds, lenght {} and passed {}",
@@ -203,13 +201,13 @@ impl HeapView<CbvSrvUavHeapView> {
     }
 }
 
-trait HeapViewType {}
+trait DescriptorHeapType {}
 
 struct RtvHeapView;
-impl HeapViewType for RtvHeapView {}
+impl DescriptorHeapType for RtvHeapView {}
 
 struct DsvHeapView;
-impl HeapViewType for DsvHeapView {}
+impl DescriptorHeapType for DsvHeapView {}
 
 struct CbvSrvUavHeapView;
-impl HeapViewType for CbvSrvUavHeapView {}
+impl DescriptorHeapType for CbvSrvUavHeapView {}
