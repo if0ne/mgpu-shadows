@@ -545,6 +545,7 @@ dependencies = [
  "oxidx",
  "rand",
  "rayon",
+ "smallvec",
  "tracing",
  "tracing-subscriber",
  "winit",
