@@ -1,0 +1,13 @@
+[package]
+name = "mgpu-shadows"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+glam = "0.29.0"
+oxidx = { git = "https://github.com/if0ne/oxidx" }
+rayon = "1.10.0"
+rand = "0.8.0"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.0"
+winit = "0.30.2"
