@@ -7,7 +7,7 @@ use oxidx::dx::{self, IDevice};
 use crate::command_queue::{CommandType, Compute, Copy, Graphics};
 
 pub struct FrameCommandAllocator<T: CommandType> {
-    inner: [dx::CommandAllocator; 4],
+    pub(super) inner: [dx::CommandAllocator; 4],
     cur: usize,
     _marker: PhantomData<T>,
 }
