@@ -2,18 +2,19 @@
 
 use std::marker::PhantomData;
 
-use crate::frame_command_allocator::{
-    CommandListType, Compute, Copy, FrameCommandAllocator, Graphics,
+use crate::{
+    command_queue::{CommandType, Compute, Copy, Graphics},
+    frame_command_allocator::FrameCommandAllocator,
 };
 
 use oxidx::dx::{self, IDevice};
 
-pub struct GpuFiber<T: CommandListType> {
-    list: dx::GraphicsCommandList,
+pub struct GpuFiber<T: CommandType> {
+    pub(super) list: dx::GraphicsCommandList,
     _marker: PhantomData<T>,
 }
 
-impl<T: CommandListType> GpuFiber<T> {
+impl<T: CommandType> GpuFiber<T> {
     fn inner_new(
         device: &dx::Device,
         allocator: &dx::CommandAllocator,

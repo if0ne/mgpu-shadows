@@ -4,24 +4,15 @@ use std::marker::PhantomData;
 
 use oxidx::dx::{self, IDevice};
 
-pub(super) trait CommandListType {}
+use crate::command_queue::{CommandType, Compute, Copy, Graphics};
 
-pub(super) struct Graphics;
-impl CommandListType for Graphics {}
-
-pub(super) struct Compute;
-impl CommandListType for Compute {}
-
-pub(super) struct Copy;
-impl CommandListType for Copy {}
-
-pub struct FrameCommandAllocator<T: CommandListType> {
+pub struct FrameCommandAllocator<T: CommandType> {
     inner: [dx::CommandAllocator; 4],
     cur: usize,
     _marker: PhantomData<T>,
 }
 
-impl<T: CommandListType> FrameCommandAllocator<T> {
+impl<T: CommandType> FrameCommandAllocator<T> {
     fn inner_new(device: &dx::Device, r#type: dx::CommandListType) -> Self {
         let inner = std::array::from_fn(|_| device.create_command_allocator(r#type).unwrap());
 
