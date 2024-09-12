@@ -4,15 +4,15 @@ use std::marker::PhantomData;
 
 use oxidx::dx::{self, IDevice};
 
-trait CommandListType {}
+pub(super) trait CommandListType {}
 
-struct Graphics;
+pub(super) struct Graphics;
 impl CommandListType for Graphics {}
 
-struct Compute;
+pub(super) struct Compute;
 impl CommandListType for Compute {}
 
-struct Copy;
+pub(super) struct Copy;
 impl CommandListType for Copy {}
 
 pub struct FrameCommandAllocator<T: CommandListType> {
@@ -22,10 +22,8 @@ pub struct FrameCommandAllocator<T: CommandListType> {
 }
 
 impl<T: CommandListType> FrameCommandAllocator<T> {
-    fn inner_new(device: dx::Device, r#type: dx::CommandListType) -> Self {
-        let inner = std::array::from_fn(|_| {
-            device.create_command_allocator(r#type).unwrap()
-        });
+    fn inner_new(device: &dx::Device, r#type: dx::CommandListType) -> Self {
+        let inner = std::array::from_fn(|_| device.create_command_allocator(r#type).unwrap());
 
         Self {
             inner,
@@ -43,19 +41,19 @@ impl<T: CommandListType> FrameCommandAllocator<T> {
 }
 
 impl FrameCommandAllocator<Graphics> {
-    pub fn graphics(device: dx::Device) -> Self {
+    pub fn graphics(device: &dx::Device) -> Self {
         Self::inner_new(device, dx::CommandListType::Direct)
     }
 }
 
 impl FrameCommandAllocator<Compute> {
-    pub fn compute(device: dx::Device) -> Self {
+    pub fn compute(device: &dx::Device) -> Self {
         Self::inner_new(device, dx::CommandListType::Compute)
     }
 }
 
 impl FrameCommandAllocator<Copy> {
-    pub fn copy(device: dx::Device) -> Self {
+    pub fn copy(device: &dx::Device) -> Self {
         Self::inner_new(device, dx::CommandListType::Copy)
     }
 }
