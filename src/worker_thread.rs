@@ -1,7 +1,7 @@
 #![allow(private_bounds)]
 
 use crate::{
-    command_queue::{WorkerType, Compute, Copy, Graphics},
+    command_queue::{Compute, Copy, Graphics, WorkerType},
     frame_command_allocator::FrameCommandAllocator,
 };
 
@@ -22,10 +22,7 @@ impl<T: WorkerType> WorkerThread<T> {
             .create_command_list(0, r#type, &allocator.inner[0], dx::PSO_NONE)
             .unwrap();
 
-        Self {
-            list,
-            allocator
-        }
+        Self { list, allocator }
     }
 
     pub fn reset(&mut self, pso: Option<&dx::PipelineState>) {
@@ -41,30 +38,18 @@ impl<T: WorkerType> WorkerThread<T> {
 
 impl WorkerThread<Graphics> {
     pub fn graphics(device: &dx::Device, allocator: FrameCommandAllocator<Graphics>) -> Self {
-        Self::inner_new(
-            device,
-            allocator,
-            dx::CommandListType::Direct,
-        )
+        Self::inner_new(device, allocator, dx::CommandListType::Direct)
     }
 }
 
 impl WorkerThread<Compute> {
     pub fn compute(device: &dx::Device, allocator: FrameCommandAllocator<Compute>) -> Self {
-        Self::inner_new(
-            device,
-            allocator,
-            dx::CommandListType::Compute,
-        )
+        Self::inner_new(device, allocator, dx::CommandListType::Compute)
     }
 }
 
 impl WorkerThread<Copy> {
     pub fn copy(device: &dx::Device, allocator: FrameCommandAllocator<Copy>) -> Self {
-        Self::inner_new(
-            device,
-            allocator,
-            dx::CommandListType::Copy,
-        )
+        Self::inner_new(device, allocator, dx::CommandListType::Copy)
     }
 }
