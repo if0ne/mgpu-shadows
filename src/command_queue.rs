@@ -5,23 +5,23 @@ use std::{marker::PhantomData, ops::Deref, sync::Arc};
 use oxidx::dx::{self, ICommandQueue, IDevice};
 use parking_lot::Mutex;
 
-use crate::gpu_fiber::GpuFiber;
+use crate::worker_thread::WorkerThread;
 
-pub(super) trait CommandType {}
+pub(super) trait WorkerType {}
 
 pub(super) struct Graphics;
-impl CommandType for Graphics {}
+impl WorkerType for Graphics {}
 
 pub(super) struct Compute;
-impl CommandType for Compute {}
+impl WorkerType for Compute {}
 
 pub(super) struct Copy;
-impl CommandType for Copy {}
+impl WorkerType for Copy {}
 
 #[derive(Clone)]
-pub struct CommandQueue<T: CommandType>(Arc<CommandQueueInner<T>>);
+pub struct CommandQueue<T: WorkerType>(Arc<CommandQueueInner<T>>);
 
-impl<T: CommandType> Deref for CommandQueue<T> {
+impl<T: WorkerType> Deref for CommandQueue<T> {
     type Target = CommandQueueInner<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -29,13 +29,13 @@ impl<T: CommandType> Deref for CommandQueue<T> {
     }
 }
 
-pub struct CommandQueueInner<T: CommandType> {
+pub struct CommandQueueInner<T: WorkerType> {
     queue: dx::CommandQueue,
     pending_list: Mutex<Vec<Option<dx::GraphicsCommandList>>>,
     _marker: PhantomData<T>,
 }
 
-impl<T: CommandType> CommandQueue<T> {
+impl<T: WorkerType> CommandQueue<T> {
     fn inner_new(device: &dx::Device, desc: &dx::CommandQueueDesc) -> Self {
         let queue = device.create_command_queue(desc).unwrap();
 
@@ -47,8 +47,8 @@ impl<T: CommandType> CommandQueue<T> {
     }
 }
 
-impl<T: CommandType> CommandQueueInner<T> {
-    pub fn push_fiber(&self, fiber: &GpuFiber<T>) {
+impl<T: WorkerType> CommandQueueInner<T> {
+    pub fn push_fiber(&self, fiber: &WorkerThread<T>) {
         self.pending_list.lock().push(Some(fiber.list.clone()));
     }
 

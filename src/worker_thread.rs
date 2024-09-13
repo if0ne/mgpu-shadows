@@ -1,18 +1,18 @@
 #![allow(private_bounds)]
 
 use crate::{
-    command_queue::{CommandType, Compute, Copy, Graphics},
+    command_queue::{WorkerType, Compute, Copy, Graphics},
     frame_command_allocator::FrameCommandAllocator,
 };
 
 use oxidx::dx::{self, ICommandAllocator, IDevice, IGraphicsCommandList};
 
-pub struct GpuFiber<T: CommandType> {
+pub struct WorkerThread<T: WorkerType> {
     pub(super) list: dx::GraphicsCommandList,
     allocator: FrameCommandAllocator<T>,
 }
 
-impl<T: CommandType> GpuFiber<T> {
+impl<T: WorkerType> WorkerThread<T> {
     fn inner_new(
         device: &dx::Device,
         allocator: FrameCommandAllocator<T>,
@@ -39,7 +39,7 @@ impl<T: CommandType> GpuFiber<T> {
     }
 }
 
-impl GpuFiber<Graphics> {
+impl WorkerThread<Graphics> {
     pub fn graphics(device: &dx::Device, allocator: FrameCommandAllocator<Graphics>) -> Self {
         Self::inner_new(
             device,
@@ -49,7 +49,7 @@ impl GpuFiber<Graphics> {
     }
 }
 
-impl GpuFiber<Compute> {
+impl WorkerThread<Compute> {
     pub fn compute(device: &dx::Device, allocator: FrameCommandAllocator<Compute>) -> Self {
         Self::inner_new(
             device,
@@ -59,7 +59,7 @@ impl GpuFiber<Compute> {
     }
 }
 
-impl GpuFiber<Copy> {
+impl WorkerThread<Copy> {
     pub fn copy(device: &dx::Device, allocator: FrameCommandAllocator<Copy>) -> Self {
         Self::inner_new(
             device,
