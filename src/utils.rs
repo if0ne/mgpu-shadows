@@ -33,30 +33,10 @@ impl MatrixExt for glam::Mat4 {
         let nl = n.dot(l.xyz());
 
         glam::Mat4 {
-            x_axis: glam::Vec4::new(
-                nl + d * l.w - l.x * n.x, 
-                -l.x * n.y, 
-                -l.x * n.z,
-                -l.x * d
-            ),
-            y_axis: glam::Vec4::new(
-                -l.y * n.x, 
-                nl + d * l.w - l.y * n.y, 
-                -l.y * n.z,
-                -l.y * d
-            ),
-            z_axis: glam::Vec4::new(
-                -l.z * n.x,  
-                -l.z * n.y,
-                nl + d * l.w - l.z * n.z,
-                -l.z * d
-            ),
-            w_axis: glam::Vec4::new(
-                -l.w * n.x,  
-                -l.w * n.y,
-                -l.w * n.z,  
-                nl,
-            ),
+            x_axis: glam::Vec4::new(nl + d * l.w - l.x * n.x, -l.x * n.y, -l.x * n.z, -l.x * d),
+            y_axis: glam::Vec4::new(-l.y * n.x, nl + d * l.w - l.y * n.y, -l.y * n.z, -l.y * d),
+            z_axis: glam::Vec4::new(-l.z * n.x, -l.z * n.y, nl + d * l.w - l.z * n.z, -l.z * d),
+            w_axis: glam::Vec4::new(-l.w * n.x, -l.w * n.y, -l.w * n.z, nl),
         }
     }
 }
