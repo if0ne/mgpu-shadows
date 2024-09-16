@@ -1,10 +1,34 @@
-use std::sync::atomic::AtomicU64;
+use std::sync::{atomic::AtomicU64, Arc};
 
-use oxidx::dx::{self, IDevice};
+use oxidx::dx::{self, IDevice, IFence};
 
-pub enum FenceType {
-    Local(LocalFence),
-    Shared(SharedFence),
+pub trait Fence {
+    fn get_completed_value(&self) -> u64;
+    fn set_event_on_completion(&self, value: u64, event: dx::Event);
+
+    fn inc_fence_value(&self) -> u64;
+
+    fn get_raw(&self) -> &dx::Fence;
+}
+
+impl Fence for LocalFence {
+    fn get_completed_value(&self) -> u64 {
+        self.raw.get_completed_value()
+    }
+
+    fn set_event_on_completion(&self, value: u64, event: dx::Event) {
+        self.raw.set_event_on_completion(value, event).unwrap();
+    }
+
+    fn inc_fence_value(&self) -> u64 {
+        self.value
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            + 1
+    }
+
+    fn get_raw(&self) -> &dx::Fence {
+        &self.raw
+    }
 }
 
 pub struct LocalFence {
@@ -24,14 +48,13 @@ impl LocalFence {
 }
 
 pub struct SharedFence {
-    owner: dx::Device,
-    pub(super) fences: Vec<dx::Fence>,
-    value: AtomicU64,
+    inner: Arc<SharedFenceInner>,
+    state: SharedFenceState,
 }
 
 impl SharedFence {
-    pub fn new<'a>(owner: dx::Device) -> Self {
-        let fence = owner
+    pub fn new(owner: dx::Device) -> Self {
+        let owner_fence = owner
             .create_fence(
                 0,
                 dx::FenceFlags::Shared | dx::FenceFlags::SharedCrossAdapter,
@@ -39,19 +62,74 @@ impl SharedFence {
             .unwrap();
 
         Self {
-            owner,
-            fences: vec![fence],
-            value: AtomicU64::default(),
+            inner: Arc::new(SharedFenceInner {
+                owner,
+                owner_fence,
+                value: Default::default(),
+            }),
+            state: SharedFenceState::Owner,
         }
     }
 
-    pub fn add_device(&mut self, device: &dx::Device) {
+    pub fn connect(&mut self, device: &dx::Device) -> SharedFence {
         let handle = self
+            .inner
             .owner
-            .create_shared_handle(&self.fences[0].clone().into(), None)
+            .create_shared_handle(&self.inner.owner_fence.clone().into(), None)
             .unwrap();
         let fence = device.open_shared_handle(handle).unwrap();
-        self.fences.push(fence);
         handle.close().unwrap();
+
+        Self {
+            inner: Arc::clone(&self.inner),
+            state: SharedFenceState::Connected { fence },
+        }
+    }
+}
+
+struct SharedFenceInner {
+    owner: dx::Device,
+    owner_fence: dx::Fence,
+    value: AtomicU64,
+}
+
+enum SharedFenceState {
+    Owner,
+    Connected { fence: dx::Fence },
+}
+
+impl Fence for SharedFence {
+    fn get_completed_value(&self) -> u64 {
+        match &self.state {
+            SharedFenceState::Owner => self.inner.owner_fence.get_completed_value(),
+            SharedFenceState::Connected { fence } => fence.get_completed_value(),
+        }
+    }
+
+    fn set_event_on_completion(&self, value: u64, event: dx::Event) {
+        match &self.state {
+            SharedFenceState::Owner => self
+                .inner
+                .owner_fence
+                .set_event_on_completion(value, event)
+                .unwrap(),
+            SharedFenceState::Connected { fence } => {
+                fence.set_event_on_completion(value, event).unwrap()
+            }
+        };
+    }
+
+    fn inc_fence_value(&self) -> u64 {
+        self.inner
+            .value
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            + 1
+    }
+
+    fn get_raw(&self) -> &dx::Fence {
+        match &self.state {
+            SharedFenceState::Owner => &self.inner.owner_fence,
+            SharedFenceState::Connected { fence } => fence,
+        }
     }
 }

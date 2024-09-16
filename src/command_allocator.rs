@@ -23,6 +23,10 @@ impl<T: WorkerType> CommandAllocator<T> {
         }
     }
 
+    pub(super) fn fence_value(&mut self) -> u64 {
+        self.fence_value
+    }
+
     pub(super) fn inc_fence_value(&mut self) {
         self.fence_value += 1;
     }

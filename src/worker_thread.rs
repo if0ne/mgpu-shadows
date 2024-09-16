@@ -8,7 +8,7 @@ use crate::{
 use oxidx::dx::{self, IDevice, IGraphicsCommandList};
 
 pub struct WorkerThread<T: WorkerType> {
-    allocator: CommandAllocator<T>,
+    pub(super) allocator: CommandAllocator<T>,
     pub(super) list: dx::GraphicsCommandList,
 }
 
