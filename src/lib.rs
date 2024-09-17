@@ -9,6 +9,7 @@ pub mod game_timer;
 pub mod descriptor_heap;
 pub mod utils;
 pub mod worker_thread;
+pub mod resource;
 
 /*
 
