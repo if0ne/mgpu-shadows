@@ -6,7 +6,7 @@ pub mod csm;
 pub mod fence;
 pub mod fps_camera_controller;
 pub mod game_timer;
-pub mod heap_view;
+pub mod descriptor_heap;
 pub mod utils;
 pub mod worker_thread;
 

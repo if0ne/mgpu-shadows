@@ -5,13 +5,13 @@ use std::marker::PhantomData;
 use oxidx::dx::{self, IDescriptorHeap, IDevice};
 
 #[derive(Clone, Copy, Debug)]
-pub struct Descriptor<T: DescriptorHeapType>(usize, PhantomData<T>);
+pub struct ResourceDescriptor<T: DescriptorHeapType>(usize, PhantomData<T>);
 
 #[derive(Debug)]
 pub struct DescriptorHeap<T: DescriptorHeapType> {
     device: dx::Device,
     inner: dx::DescriptorHeap,
-    free_list: Vec<Descriptor<T>>,
+    free_list: Vec<ResourceDescriptor<T>>,
 
     size: usize,
     capacity: usize,
@@ -42,7 +42,7 @@ impl<T: DescriptorHeapType> DescriptorHeap<T> {
         }
     }
 
-    pub fn remove(&mut self, handle: Descriptor<T>) {
+    pub fn remove(&mut self, handle: ResourceDescriptor<T>) {
         if handle.0 >= self.size {
             panic!(
                 "HeapView<{}>: Index out of bounds, length {} and passed {}",
@@ -56,7 +56,7 @@ impl<T: DescriptorHeapType> DescriptorHeap<T> {
         self.free_list.push(handle);
     }
 
-    pub fn get(&mut self, handle: Descriptor<T>) -> dx::GpuDescriptorHandle {
+    pub fn get(&mut self, handle: ResourceDescriptor<T>) -> dx::GpuDescriptorHandle {
         if handle.0 >= self.size {
             panic!(
                 "DescriptorHeap<{}>: Index out of bounds, lenght {} and passed {}",
@@ -105,7 +105,7 @@ impl DescriptorHeap<RtvHeapView> {
         &mut self,
         resource: &dx::Resource,
         desc: Option<&dx::RenderTargetViewDesc>,
-    ) -> Descriptor<RtvHeapView> {
+    ) -> ResourceDescriptor<RtvHeapView> {
         if let Some(free) = self.free_list.pop() {
             self.size += 1;
 
@@ -131,7 +131,7 @@ impl DescriptorHeap<RtvHeapView> {
         self.device
             .create_render_target_view(Some(resource), desc, handle);
 
-        let handle = Descriptor(self.size, PhantomData);
+        let handle = ResourceDescriptor(self.size, PhantomData);
         self.size += 1;
 
         handle
@@ -171,7 +171,7 @@ impl DescriptorHeap<DsvHeapView> {
         &mut self,
         resource: &dx::Resource,
         desc: Option<&dx::DepthStencilViewDesc>,
-    ) -> Descriptor<DsvHeapView> {
+    ) -> ResourceDescriptor<DsvHeapView> {
         if let Some(free) = self.free_list.pop() {
             self.size += 1;
 
@@ -197,7 +197,7 @@ impl DescriptorHeap<DsvHeapView> {
         self.device
             .create_depth_stencil_view(Some(resource), desc, handle);
 
-        let handle = Descriptor(self.size, PhantomData);
+        let handle = ResourceDescriptor(self.size, PhantomData);
         self.size += 1;
 
         handle
@@ -237,7 +237,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
     pub fn push_cbv(
         &mut self,
         desc: Option<&dx::ConstantBufferViewDesc>,
-    ) -> Descriptor<CbvSrvUavHeapView> {
+    ) -> ResourceDescriptor<CbvSrvUavHeapView> {
         if let Some(free) = self.free_list.pop() {
             self.size += 1;
 
@@ -261,7 +261,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
 
         self.device.create_constant_buffer_view(desc, handle);
 
-        let handle = Descriptor(self.size, PhantomData);
+        let handle = ResourceDescriptor(self.size, PhantomData);
         self.size += 1;
 
         handle
@@ -271,7 +271,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
         &mut self,
         resources: &dx::Resource,
         desc: Option<&dx::ShaderResourceViewDesc>,
-    ) -> Descriptor<CbvSrvUavHeapView> {
+    ) -> ResourceDescriptor<CbvSrvUavHeapView> {
         if let Some(free) = self.free_list.pop() {
             self.size += 1;
 
@@ -297,7 +297,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
         self.device
             .create_shader_resource_view(Some(resources), desc, handle);
 
-        let handle = Descriptor(self.size, PhantomData);
+        let handle = ResourceDescriptor(self.size, PhantomData);
         self.size += 1;
 
         handle
@@ -308,7 +308,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
         resources: &dx::Resource,
         counter_resources: Option<&dx::Resource>,
         desc: Option<&dx::UnorderedAccessViewDesc>,
-    ) -> Descriptor<CbvSrvUavHeapView> {
+    ) -> ResourceDescriptor<CbvSrvUavHeapView> {
         if let Some(free) = self.free_list.pop() {
             self.size += 1;
 
@@ -338,7 +338,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
         self.device
             .create_unordered_access_view(Some(resources), counter_resources, desc, handle);
 
-        let handle = Descriptor(self.size, PhantomData);
+        let handle = ResourceDescriptor(self.size, PhantomData);
         self.size += 1;
 
         handle
