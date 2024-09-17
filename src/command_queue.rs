@@ -100,7 +100,7 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
         }
     }
 
-    fn flush(&self) {
+    pub fn flush(&self) {
         self.wait_for_fence(self.signal());
     }
 
