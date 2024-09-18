@@ -103,6 +103,30 @@ impl SharedResource {
             }
         }
     }
+
+    pub fn local_resource(&self) -> &dx::Resource {
+        match self.state {
+            SharedResourceState::Owner => self
+                .inner
+                .owner_local_resource
+                .as_ref()
+                .unwrap_or(&self.inner.owner_cross_resource),
+            SharedResourceState::CrossAdapter { cross } => &cross,
+            SharedResourceState::Connected { local, .. } => &local,
+        }
+    }
+
+    pub fn cross_resource(&self) -> &dx::Resource {
+        match self.state {
+            SharedResourceState::Owner => &self.inner.owner_cross_resource,
+            SharedResourceState::CrossAdapter { cross } => &cross,
+            SharedResourceState::Connected { cross, .. } => &cross,
+        }
+    }
+
+    pub fn get_desc(&self) -> dx::ResourceDesc {
+        self.inner.owner_cross_resource.get_desc()
+    }
 }
 
 struct SharedResourceInner {

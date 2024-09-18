@@ -165,7 +165,11 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
                 .unwrap()
         };
 
-        WorkerThread { allocator, list }
+        WorkerThread {
+            device: self.device.clone(),
+            allocator,
+            list,
+        }
     }
 }
 
