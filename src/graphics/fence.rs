@@ -79,12 +79,12 @@ impl SharedFence {
         }
     }
 
-    pub fn connect(&mut self, device: &Device) -> SharedFence {
+    pub fn connect(&mut self, device: &Device) -> Self {
         let handle = self
             .shared
             .owner
             .raw
-            .create_shared_handle(&self.shared.owner_fence.clone().into(), None)
+            .create_shared_handle(&self.shared.owner_fence, None)
             .unwrap();
         let fence = device.raw.open_shared_handle(handle).unwrap();
         handle.close().unwrap();
