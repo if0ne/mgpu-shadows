@@ -13,17 +13,17 @@ pub(super) trait WorkerType {
     const RAW_TYPE: dx::CommandListType;
 }
 
-pub struct Graphics;
+pub(super) struct Graphics;
 impl WorkerType for Graphics {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Direct;
 }
 
-pub struct Compute;
+pub(super) struct Compute;
 impl WorkerType for Compute {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Compute;
 }
 
-pub struct Transfer;
+pub(super) struct Transfer;
 impl WorkerType for Transfer {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Copy;
 }

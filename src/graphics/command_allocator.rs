@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use oxidx::dx::{self, ICommandAllocator, IDevice};
 
-use super::command_queue::{Compute, Graphics, Transfer, WorkerType};
+use super::command_queue::WorkerType;
 
 pub struct CommandAllocator<T: WorkerType> {
     pub(super) raw: dx::CommandAllocator,
@@ -33,23 +33,5 @@ impl<T: WorkerType> CommandAllocator<T> {
 
     pub(super) fn reset(&self) {
         self.raw.reset().unwrap();
-    }
-}
-
-impl CommandAllocator<Graphics> {
-    pub fn graphics(device: &dx::Device) -> Self {
-        Self::inner_new(device, dx::CommandListType::Direct)
-    }
-}
-
-impl CommandAllocator<Compute> {
-    pub fn compute(device: &dx::Device) -> Self {
-        Self::inner_new(device, dx::CommandListType::Compute)
-    }
-}
-
-impl CommandAllocator<Transfer> {
-    pub fn transfer(device: &dx::Device) -> Self {
-        Self::inner_new(device, dx::CommandListType::Copy)
     }
 }

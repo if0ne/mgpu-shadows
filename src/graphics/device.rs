@@ -1,17 +1,37 @@
 #![allow(private_bounds)]
+#![allow(private_interfaces)]
 
 use std::{ops::Deref, sync::Arc};
 
-use oxidx::dx;
+use oxidx::dx::{self, IAdapter3, IDevice};
 
 use super::{
     command_allocator::CommandAllocator,
     command_queue::{CommandQueue, Compute, Graphics, Transfer, WorkerType},
+    descriptor_heap::{CbvSrvUavHeapView, DescriptorHeap, DsvHeapView, RtvHeapView},
     fence::Fence,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Device(Arc<DeviceInner>);
+
+impl Device {
+    pub fn new(adapter: dx::Adapter3) -> Self {
+        let name = adapter.get_desc1().unwrap().description().to_string();
+
+        let raw: dx::Device = dx::create_device(Some(&adapter), dx::FeatureLevel::Level11).unwrap();
+
+        let mut feature = dx::features::OptionsFeature::default();
+        raw.check_feature_support(&mut feature).unwrap();
+
+        Self(Arc::new(DeviceInner {
+            name,
+            adapter,
+            raw,
+            is_cross_adapter_texture_supported: feature.cross_adapter_row_major_texture_supported(),
+        }))
+    }
+}
 
 impl Deref for Device {
     type Target = DeviceInner;
@@ -21,10 +41,13 @@ impl Deref for Device {
     }
 }
 
+#[derive(Debug)]
 pub struct DeviceInner {
     name: String,
     adapter: dx::Adapter3,
     pub(super) raw: dx::Device,
+
+    is_cross_adapter_texture_supported: bool,
 }
 
 impl Device {
@@ -44,5 +67,24 @@ impl Device {
 
     pub fn create_transfer_command_queue<F: Fence>(&self, fence: F) -> CommandQueue<Transfer, F> {
         CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::direct())
+    }
+
+    pub fn create_rtv_descriptor_heap(&self, capacity: usize) -> DescriptorHeap<RtvHeapView> {
+        DescriptorHeap::inner_new(self.clone(), capacity)
+    }
+
+    pub fn create_dsv_descriptor_heap(&self, capacity: usize) -> DescriptorHeap<DsvHeapView> {
+        DescriptorHeap::inner_new(self.clone(), capacity)
+    }
+
+    pub fn create_cbv_srv_uav_descriptor_heap(
+        &self,
+        capacity: usize,
+    ) -> DescriptorHeap<CbvSrvUavHeapView> {
+        DescriptorHeap::inner_new(self.clone(), capacity)
+    }
+
+    pub fn is_cross_adapter_texture_supported(&self) -> bool {
+        self.is_cross_adapter_texture_supported
     }
 }
