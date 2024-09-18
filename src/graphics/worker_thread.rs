@@ -1,6 +1,6 @@
 #![allow(private_bounds)]
 
-use crate::{
+use super::{
     command_allocator::CommandAllocator,
     command_queue::{Compute, Graphics, Transfer, WorkerType},
 };

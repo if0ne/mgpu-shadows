@@ -5,18 +5,28 @@ use std::{collections::VecDeque, marker::PhantomData, ops::Deref, sync::Arc};
 use oxidx::dx::{self, ICommandQueue, IDevice, PSO_NONE};
 use parking_lot::Mutex;
 
-use crate::{command_allocator::CommandAllocator, fence::Fence, worker_thread::WorkerThread};
+use super::{
+    command_allocator::CommandAllocator, device::Device, fence::Fence, worker_thread::WorkerThread,
+};
 
-pub(super) trait WorkerType {}
+pub(super) trait WorkerType {
+    const RAW_TYPE: dx::CommandListType;
+}
 
-pub(super) struct Graphics;
-impl WorkerType for Graphics {}
+pub struct Graphics;
+impl WorkerType for Graphics {
+    const RAW_TYPE: dx::CommandListType = dx::CommandListType::Direct;
+}
 
-pub(super) struct Compute;
-impl WorkerType for Compute {}
+pub struct Compute;
+impl WorkerType for Compute {
+    const RAW_TYPE: dx::CommandListType = dx::CommandListType::Compute;
+}
 
-pub(super) struct Transfer;
-impl WorkerType for Transfer {}
+pub struct Transfer;
+impl WorkerType for Transfer {
+    const RAW_TYPE: dx::CommandListType = dx::CommandListType::Copy;
+}
 
 #[derive(Clone)]
 pub struct CommandQueue<T: WorkerType, F: Fence>(Arc<CommandQueueInner<T, F>>);
@@ -30,7 +40,7 @@ impl<T: WorkerType, F: Fence> Deref for CommandQueue<T, F> {
 }
 
 pub struct CommandQueueInner<T: WorkerType, F: Fence> {
-    device: dx::Device,
+    device: Device,
 
     queue: Mutex<dx::CommandQueue>,
 
@@ -44,14 +54,15 @@ pub struct CommandQueueInner<T: WorkerType, F: Fence> {
 }
 
 impl<T: WorkerType, F: Fence> CommandQueue<T, F> {
-    fn inner_new(device: dx::Device, fence: F, desc: &dx::CommandQueueDesc) -> Self {
-        let queue = device.create_command_queue(desc).unwrap();
+    pub(super) fn inner_new(device: Device, fence: F, desc: &dx::CommandQueueDesc) -> Self {
+        let queue = device.raw.create_command_queue(desc).unwrap();
 
         let cmd_allocators = (0..3)
-            .map(|_| CommandAllocator::inner_new(&device, desc.r#type()))
+            .map(|_| device.create_command_allocator())
             .collect::<VecDeque<CommandAllocator<T>>>();
 
         let cmd_list = vec![device
+            .raw
             .create_command_list(0, desc.r#type(), &cmd_allocators[0].raw, PSO_NONE)
             .unwrap()];
 
@@ -71,11 +82,6 @@ impl<T: WorkerType, F: Fence> CommandQueue<T, F> {
 }
 
 impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
-    pub fn push_fiber(&self, fiber: WorkerThread<T>) {
-        self.temp_buffer.lock().push(Some(fiber.list.clone()));
-        self.pending_list.lock().push(fiber);
-    }
-
     fn signal(&self) -> u64 {
         let value = self.fence.inc_value();
         self.queue
@@ -87,6 +93,13 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
 
     fn is_fence_complete(&self, value: u64) -> bool {
         self.fence.get_completed_value() >= value
+    }
+}
+
+impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
+    pub fn push_fiber(&self, fiber: WorkerThread<T>) {
+        self.temp_buffer.lock().push(Some(fiber.list.clone()));
+        self.pending_list.lock().push(fiber);
     }
 
     pub fn wait_on_cpu(&self, value: u64) {
@@ -128,14 +141,8 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
 
         fence_value
     }
-}
 
-impl<F: Fence> CommandQueue<Graphics, F> {
-    pub fn graphics(device: dx::Device, fence: F) -> Self {
-        Self::inner_new(device, fence, &dx::CommandQueueDesc::direct())
-    }
-
-    pub fn get_worker_thread(&self, pso: Option<&dx::PipelineState>) -> WorkerThread<Graphics> {
+    pub fn get_worker_thread(&self, pso: Option<&dx::PipelineState>) -> WorkerThread<T> {
         let allocator = if let Some(allocator) =
             self.cmd_allocators.lock().pop_front().and_then(|mut a| {
                 if self.is_fence_complete(a.fence_value()) {
@@ -146,76 +153,15 @@ impl<F: Fence> CommandQueue<Graphics, F> {
             }) {
             allocator
         } else {
-            CommandAllocator::inner_new(&self.device, dx::CommandListType::Direct)
+            self.device.create_command_allocator()
         };
 
         let list = if let Some(list) = self.cmd_list.lock().pop() {
             list
         } else {
             self.device
-                .create_command_list(0, dx::CommandListType::Direct, &allocator.raw, pso)
-                .unwrap()
-        };
-
-        WorkerThread { allocator, list }
-    }
-}
-
-impl<F: Fence> CommandQueue<Compute, F> {
-    pub fn compute(device: dx::Device, fence: F) -> Self {
-        Self::inner_new(device, fence, &dx::CommandQueueDesc::compute())
-    }
-
-    pub fn get_worker_thread(&self, pso: Option<&dx::PipelineState>) -> WorkerThread<Compute> {
-        let allocator = if let Some(allocator) =
-            self.cmd_allocators.lock().pop_front().and_then(|mut a| {
-                if self.is_fence_complete(a.fence_value()) {
-                    Some(a)
-                } else {
-                    None
-                }
-            }) {
-            allocator
-        } else {
-            CommandAllocator::inner_new(&self.device, dx::CommandListType::Compute)
-        };
-
-        let list = if let Some(list) = self.cmd_list.lock().pop() {
-            list
-        } else {
-            self.device
-                .create_command_list(0, dx::CommandListType::Compute, &allocator.raw, pso)
-                .unwrap()
-        };
-
-        WorkerThread { allocator, list }
-    }
-}
-
-impl<F: Fence> CommandQueue<Transfer, F> {
-    pub fn transfer(device: dx::Device, fence: F) -> Self {
-        Self::inner_new(device, fence, &dx::CommandQueueDesc::copy())
-    }
-
-    pub fn get_worker_thread(&self, pso: Option<&dx::PipelineState>) -> WorkerThread<Transfer> {
-        let allocator = if let Some(allocator) =
-            self.cmd_allocators.lock().pop_front().and_then(|mut a| {
-                if self.is_fence_complete(a.fence_value()) {
-                    Some(a)
-                } else {
-                    None
-                }
-            }) {
-            allocator
-        } else {
-            CommandAllocator::inner_new(&self.device, dx::CommandListType::Copy)
-        };
-
-        let list = if let Some(list) = self.cmd_list.lock().pop() {
-            list
-        } else {
-            self.device
-                .create_command_list(0, dx::CommandListType::Copy, &allocator.raw, pso)
+                .raw
+                .create_command_list(0, T::RAW_TYPE, &allocator.raw, pso)
                 .unwrap()
         };
 
@@ -224,8 +170,9 @@ impl<F: Fence> CommandQueue<Transfer, F> {
 }
 
 #[cfg(test)]
+#[allow(unused)]
 mod tests {
-    use crate::fence::LocalFence;
+    use super::super::fence::LocalFence;
 
     use super::{CommandQueue, Compute, Graphics, Transfer};
 

@@ -1,15 +1,9 @@
 pub mod camera;
-pub mod command_allocator;
-pub mod command_queue;
-pub mod constant_buffer;
 pub mod csm;
-pub mod descriptor_heap;
-pub mod fence;
 pub mod fps_camera_controller;
 pub mod game_timer;
-pub mod resource;
+pub mod graphics;
 pub mod utils;
-pub mod worker_thread;
 
 /*
 

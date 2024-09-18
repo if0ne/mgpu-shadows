@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use oxidx::dx::{self, ICommandAllocator, IDevice};
 
-use crate::command_queue::{Compute, Graphics, Transfer, WorkerType};
+use super::command_queue::{Compute, Graphics, Transfer, WorkerType};
 
 pub struct CommandAllocator<T: WorkerType> {
     pub(super) raw: dx::CommandAllocator,
