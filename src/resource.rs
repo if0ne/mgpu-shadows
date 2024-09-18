@@ -8,7 +8,6 @@ pub trait Resource {
     fn get_desc(&self) -> Self::Desc;
 }
 
-
 pub struct SharedResource {
     inner: Arc<SharedResourceInner>,
     state: SharedResourceState,
@@ -22,7 +21,7 @@ impl SharedResource {
                 dx::HeapFlags::Shared | dx::HeapFlags::SharedCrossAdapter,
                 desc,
                 ResourceStates::Common,
-                None
+                None,
             )
             .unwrap();
 
@@ -42,7 +41,7 @@ impl SharedResource {
             .owner
             .create_shared_handle(&self.inner.owner_resource.clone().into(), None)
             .unwrap();
-        
+
         handle.close().unwrap();
 
         todo!()

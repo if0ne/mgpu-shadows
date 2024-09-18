@@ -77,7 +77,7 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
     }
 
     fn signal(&self) -> u64 {
-        let value = self.fence.inc_fence_value();
+        let value = self.fence.inc_value();
         self.queue
             .lock()
             .signal(self.fence.get_raw(), value)
@@ -89,7 +89,7 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
         self.fence.get_completed_value() >= value
     }
 
-    fn wait_for_fence(&self, value: u64) {
+    pub fn wait_on_cpu(&self, value: u64) {
         if !self.is_fence_complete(value) {
             let event_handle = dx::Event::create(false, false).unwrap();
 
@@ -100,8 +100,11 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
         }
     }
 
-    pub fn flush(&self) {
-        self.wait_for_fence(self.signal());
+    pub fn wait_other_queue_on_gpu<OT: WorkerType, OF: Fence>(&self, queue: CommandQueue<OT, OF>) {
+        self.queue
+            .lock()
+            .wait(queue.fence.get_raw(), queue.fence.get_current_value())
+            .unwrap();
     }
 
     pub fn execute(&self) -> u64 {
