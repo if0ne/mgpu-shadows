@@ -2,6 +2,8 @@ use std::sync::{atomic::AtomicU64, Arc};
 
 use oxidx::dx::{self, IDevice, IFence};
 
+use super::device::Device;
+
 pub trait Fence {
     fn get_completed_value(&self) -> u64;
     fn set_event_on_completion(&self, value: u64, event: dx::Event);
@@ -42,8 +44,8 @@ pub struct LocalFence {
 }
 
 impl LocalFence {
-    pub fn new(device: &dx::Device) -> Self {
-        let fence = device.create_fence(0, dx::FenceFlags::empty()).unwrap();
+    pub(super) fn inner_new(device: &Device) -> Self {
+        let fence = device.raw.create_fence(0, dx::FenceFlags::empty()).unwrap();
 
         Self {
             raw: fence,
@@ -58,8 +60,9 @@ pub struct SharedFence {
 }
 
 impl SharedFence {
-    pub fn new(owner: dx::Device) -> Self {
+    pub(super) fn inner_new(owner: Device) -> Self {
         let owner_fence = owner
+            .raw
             .create_fence(
                 0,
                 dx::FenceFlags::Shared | dx::FenceFlags::SharedCrossAdapter,
@@ -76,13 +79,14 @@ impl SharedFence {
         }
     }
 
-    pub fn connect(&mut self, device: &dx::Device) -> SharedFence {
+    pub fn connect(&mut self, device: &Device) -> SharedFence {
         let handle = self
             .shared
             .owner
+            .raw
             .create_shared_handle(&self.shared.owner_fence.clone().into(), None)
             .unwrap();
-        let fence = device.open_shared_handle(handle).unwrap();
+        let fence = device.raw.open_shared_handle(handle).unwrap();
         handle.close().unwrap();
 
         Self {
@@ -93,7 +97,7 @@ impl SharedFence {
 }
 
 struct SharedFenceInner {
-    owner: dx::Device,
+    owner: Device,
     owner_fence: dx::Fence,
     value: AtomicU64,
 }
