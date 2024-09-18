@@ -10,7 +10,7 @@ pub struct SharedHeap {
 }
 
 impl SharedHeap {
-    pub(super) fn inner_new(owner: Device, size: u64) -> Self {
+    pub(super) fn inner_new(owner: Device, size: usize) -> Self {
         let owner_heap = owner
             .raw
             .create_heap(
@@ -25,7 +25,7 @@ impl SharedHeap {
         }
     }
 
-    pub fn connect(&mut self, device: Device) -> Self {
+    pub fn connect(&self, device: Device) -> Self {
         let handle = self
             .shared
             .owner
@@ -42,14 +42,14 @@ impl SharedHeap {
     }
 
     pub fn heap(&self) -> &dx::Heap {
-        match self.state {
+        match &self.state {
             SharedHeapState::Owner => &self.shared.owner_heap,
-            SharedHeapState::Connected { heap, .. } => &heap,
+            SharedHeapState::Connected { heap, .. } => heap,
         }
     }
 
-    pub fn device(&self) -> &dx::Device {
-        match self.state {
+    pub fn device(&self) -> &Device {
+        match &self.state {
             SharedHeapState::Owner => &self.shared.owner,
             SharedHeapState::Connected { device, .. } => &device,
         }

@@ -1,12 +1,11 @@
 #![allow(private_bounds)]
 
 use super::{
-    command_allocator::CommandAllocator,
-    command_queue::{Compute, Graphics, Transfer, WorkerType},
+    command_allocator::CommandAllocator, command_queue::WorkerType, device::Device,
     resource::SharedResource,
 };
 
-use oxidx::dx::{self, Device, IDevice, IGraphicsCommandList};
+use oxidx::dx::{self, IDevice, IGraphicsCommandList};
 
 pub struct WorkerThread<T: WorkerType> {
     pub(super) device: Device,
@@ -37,10 +36,7 @@ impl<T: WorkerType> WorkerThread<T> {
     }
 
     pub fn pull_shared(&self, shared_resource: &SharedResource) {
-        if shared_resource
-            .device()
-            .is_cross_adapter_texture_supported()
-        {
+        if shared_resource.owner().is_cross_adapter_texture_supported() {
             return;
         }
 
@@ -48,8 +44,8 @@ impl<T: WorkerType> WorkerThread<T> {
 
         let mut layouts = [dx::PlacedSubresourceFootprint::default(); 1];
         let mut num_rows = [0; 1];
-        let mut row_size = [0; 1];
-        self.device.get_copyable_footprints(
+        let mut row_sizes = [0; 1];
+        self.device.raw.get_copyable_footprints(
             &desc,
             0..1,
             0,
@@ -66,14 +62,11 @@ impl<T: WorkerType> WorkerThread<T> {
             .with_bottom(desc.height() as u32);
 
         self.list
-            .copy_texture_region(&dst, 0, 0, 0, &src, Some(&src_box));
+            .copy_texture_region(&dest, 0, 0, 0, &src, Some(&src_box));
     }
 
     pub fn push_shared(&self, shared_resource: &SharedResource) {
-        if shared_resource
-            .device()
-            .is_cross_adapter_texture_supported()
-        {
+        if shared_resource.owner().is_cross_adapter_texture_supported() {
             return;
         }
 
@@ -81,8 +74,8 @@ impl<T: WorkerType> WorkerThread<T> {
 
         let mut layouts = [dx::PlacedSubresourceFootprint::default(); 1];
         let mut num_rows = [0; 1];
-        let mut row_size = [0; 1];
-        self.device.get_copyable_footprints(
+        let mut row_sizes = [0; 1];
+        self.device.raw.get_copyable_footprints(
             &desc,
             0..1,
             0,
@@ -99,6 +92,6 @@ impl<T: WorkerType> WorkerThread<T> {
             .with_bottom(desc.height() as u32);
 
         self.list
-            .copy_texture_region(&dst, 0, 0, 0, &src, Some(&src_box));
+            .copy_texture_region(&dest, 0, 0, 0, &src, Some(&src_box));
     }
 }

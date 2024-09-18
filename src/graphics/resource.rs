@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use oxidx::dx::{self, IDevice, IResource, ResourceStates};
+use oxidx::dx::{self, IDevice, IResource};
 
 use super::device::Device;
 use super::heap::SharedHeap;
@@ -18,36 +18,40 @@ pub struct SharedResource {
 }
 
 impl SharedResource {
-    pub fn new(owner: &SharedHeap, heap_offset: usize, desc: &dx::ResourceDesc) -> Self {
-        let owner_local_resource = if owner.device().is_cross_adapter_texture_supported() {
+    pub(super) fn inner_new(owner: &SharedHeap, offset: usize, desc: &dx::ResourceDesc) -> Self {
+        let owner_local_resource = owner
+            .device()
+            .raw
+            .create_committed_resource(
+                &dx::HeapProperties::default(),
+                dx::HeapFlags::empty(),
+                desc,
+                dx::ResourceStates::Common,
+                None,
+            )
+            .unwrap();
+
+        let owner_cross_resource = if owner.device().is_cross_adapter_texture_supported() {
             None
         } else {
             Some(
                 owner
                     .device()
                     .raw
-                    .create_committed_resource(
-                        &dx::HeapProperties::default(),
-                        dx::HeapFlags::empty(),
-                        desc,
+                    .create_placed_resource(
+                        owner.heap(),
+                        offset as u64,
+                        &dx::ResourceDesc::texture_2d(desc.width(), desc.height())
+                            .with_format(desc.format())
+                            .with_layout(dx::TextureLayout::RowMajor)
+                            .with_mip_levels(1)
+                            .with_flags(dx::ResourceFlags::AllowCrossAdapter),
                         dx::ResourceStates::Common,
-                        Some(&dx::ClearValue::color(desc.format(), [1.0, 1.0, 1.0, 1.0])),
+                        None,
                     )
                     .unwrap(),
             )
         };
-
-        let owner_cross_resource = owner
-            .device()
-            .raw
-            .create_placed_resource(
-                &owner.heap(),
-                heap_offset as u64,
-                desc,
-                dx::ResourceStates::CopyDest,
-                Some(&dx::ClearValue::color(desc.format(), [1.0, 1.0, 1.0, 1.0])),
-            )
-            .unwrap();
 
         Self {
             inner: Arc::new(SharedResourceInner {
@@ -59,18 +63,22 @@ impl SharedResource {
         }
     }
 
-    pub fn connect(&mut self, other: &SharedHeap, heap_offset: usize) -> Self {
-        let desc = self.inner.owner_cross_resource.get_desc();
+    pub fn connect(&self, other: &SharedHeap, offset: usize) -> Self {
+        let desc = self.inner.owner_local_resource.get_desc();
 
         let cross_resource = other
             .device()
             .raw
             .create_placed_resource(
                 other.heap(),
-                heap_offset as u64,
-                &desc,
-                dx::ResourceStates::CopyDest,
-                Some(&dx::ClearValue::color(desc.format(), [1.0, 1.0, 1.0, 1.0])),
+                offset as u64,
+                &dx::ResourceDesc::texture_2d(desc.width(), desc.height())
+                    .with_format(desc.format())
+                    .with_layout(dx::TextureLayout::RowMajor)
+                    .with_mip_levels(1)
+                    .with_flags(dx::ResourceFlags::AllowCrossAdapter),
+                dx::ResourceStates::Common,
+                None,
             )
             .unwrap();
 
@@ -90,7 +98,7 @@ impl SharedResource {
                     dx::HeapFlags::empty(),
                     &desc,
                     dx::ResourceStates::Common,
-                    Some(&dx::ClearValue::color(desc.format(), [1.0, 1.0, 1.0, 1.0])),
+                    None,
                 )
                 .unwrap();
 
@@ -105,34 +113,38 @@ impl SharedResource {
     }
 
     pub fn local_resource(&self) -> &dx::Resource {
-        match self.state {
-            SharedResourceState::Owner => self
-                .inner
-                .owner_local_resource
-                .as_ref()
-                .unwrap_or(&self.inner.owner_cross_resource),
-            SharedResourceState::CrossAdapter { cross } => &cross,
-            SharedResourceState::Connected { local, .. } => &local,
+        match &self.state {
+            SharedResourceState::Owner => &self.inner.owner_local_resource,
+            SharedResourceState::CrossAdapter { cross } => cross,
+            SharedResourceState::Connected { local, .. } => local,
         }
     }
 
     pub fn cross_resource(&self) -> &dx::Resource {
-        match self.state {
-            SharedResourceState::Owner => &self.inner.owner_cross_resource,
-            SharedResourceState::CrossAdapter { cross } => &cross,
-            SharedResourceState::Connected { cross, .. } => &cross,
+        match &self.state {
+            SharedResourceState::Owner => self
+                .inner
+                .owner_cross_resource
+                .as_ref()
+                .unwrap_or(&self.inner.owner_local_resource),
+            SharedResourceState::CrossAdapter { cross } => cross,
+            SharedResourceState::Connected { cross, .. } => cross,
         }
     }
 
     pub fn get_desc(&self) -> dx::ResourceDesc {
-        self.inner.owner_cross_resource.get_desc()
+        self.inner.owner_local_resource.get_desc()
+    }
+
+    pub fn owner(&self) -> &Device {
+        &self.inner.owner
     }
 }
 
 struct SharedResourceInner {
     owner: Device,
-    owner_local_resource: Option<dx::Resource>,
-    owner_cross_resource: dx::Resource,
+    owner_local_resource: dx::Resource,
+    owner_cross_resource: Option<dx::Resource>,
 }
 
 #[derive(Clone)]

@@ -79,7 +79,7 @@ impl SharedFence {
         }
     }
 
-    pub fn connect(&mut self, device: &Device) -> Self {
+    pub fn connect(&self, device: &Device) -> Self {
         let handle = self
             .shared
             .owner

@@ -10,6 +10,8 @@ use super::{
     command_queue::{CommandQueue, Compute, Graphics, Transfer, WorkerType},
     descriptor_heap::{CbvSrvUavHeapView, DescriptorHeap, DsvHeapView, RtvHeapView},
     fence::{Fence, LocalFence, SharedFence},
+    heap::SharedHeap,
+    resource::SharedResource,
 };
 
 #[derive(Clone, Debug)]
@@ -90,6 +92,19 @@ impl Device {
 
     pub fn create_shared_fence(&self) -> SharedFence {
         SharedFence::inner_new(self.clone())
+    }
+
+    pub fn create_shared_heap(&self, size: usize) -> SharedHeap {
+        SharedHeap::inner_new(self.clone(), size)
+    }
+
+    pub fn create_shared_resource(
+        &self,
+        heap: &SharedHeap,
+        offset: usize,
+        desc: &dx::ResourceDesc,
+    ) -> SharedResource {
+        SharedResource::inner_new(heap, offset, desc)
     }
 
     pub fn is_cross_adapter_texture_supported(&self) -> bool {
