@@ -47,6 +47,18 @@ impl<T: Clone + Copy> ConstantBuffer<T> {
             )
         }
     }
+
+    pub fn as_slice(&self) -> &[ConstantDataWrapper<T>] {
+        unsafe {
+            std::slice::from_raw_parts(self.mapped_data.as_ptr() as *const _, self.size)
+        }
+    }
+
+    pub fn as_slice_mut(&mut self) -> &mut [ConstantDataWrapper<T>] {
+        unsafe {
+            std::slice::from_raw_parts_mut(self.mapped_data.as_ptr(), self.size)
+        }
+    }
 }
 
 impl<T: Clone + Copy> ConstantBuffer<T> {
@@ -80,3 +92,17 @@ impl<T: Clone + Copy> Drop for ConstantBuffer<T> {
 #[derive(Clone, Copy, Debug)]
 #[repr(align(256))]
 struct ConstantDataWrapper<T>(pub T);
+
+impl<T> std::ops::Deref for ConstantBuffer<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for ConstantBuffer<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
