@@ -1,8 +1,4 @@
 use glam::Vec4Swizzles;
-use gpu_allocator::{
-    d3d12::{AllocationCreateDesc, ResourceCategory},
-    MemoryLocation,
-};
 use oxidx::dx::{self, IDevice};
 
 pub fn align(value: u32, alignment: u32) -> u32 {
@@ -69,41 +65,4 @@ pub trait AllocationCreateDescExt {
         name: &str,
         location: MemoryLocation,
     ) -> Self;
-}
-
-impl<'a> AllocationCreateDescExt for AllocationCreateDesc<'a> {
-    fn from_oxidx_d3d12_resource_desc(
-        device: &dx::Device,
-        desc: &dx::ResourceDesc,
-        name: &str,
-        location: MemoryLocation,
-    ) -> Self {
-        let allocation_info = device.get_resource_allocation_info(0, &[*desc]);
-        let device = unsafe { std::mem::transmute_copy(device) };
-        let desc = unsafe { std::mem::transmute(desc) };
-        let resource_category: ResourceCategory = desc.into();
-
-        AllocationCreateDesc {
-            name,
-            location,
-            size: allocation_info.size(),
-            alignment: allocation_info.alignment(),
-            resource_category,
-        }
-    }
-}
-
-impl From<&dx::ResourceDesc> for ResourceCategory {
-    fn from(desc: &dx::ResourceDesc) -> Self {
-        if desc.dimension() == dx::ResourceDimension::Buffer {
-            Self::Buffer
-        } else if !(desc.flags()
-            & (dx::ResourceFlags::AllowRenderTarget | dx::ResourceFlags::AllowDepthStencil))
-            .is_empty()
-        {
-            Self::RtvDsvTexture
-        } else {
-            Self::OtherTexture
-        }
-    }
 }
