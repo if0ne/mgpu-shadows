@@ -69,15 +69,11 @@ impl<T: Clone + Copy> ConstantBuffer<T> {
     }
 
     pub fn as_slice(&self) -> &[ConstantDataWrapper<T>] {
-        unsafe {
-            std::slice::from_raw_parts(self.mapped_data.as_ptr() as *const _, self.size)
-        }
+        unsafe { std::slice::from_raw_parts(self.mapped_data.as_ptr() as *const _, self.size) }
     }
 
     pub fn as_slice_mut(&mut self) -> &mut [ConstantDataWrapper<T>] {
-        unsafe {
-            std::slice::from_raw_parts_mut(self.mapped_data.as_ptr(), self.size)
-        }
+        unsafe { std::slice::from_raw_parts_mut(self.mapped_data.as_ptr(), self.size) }
     }
 }
 

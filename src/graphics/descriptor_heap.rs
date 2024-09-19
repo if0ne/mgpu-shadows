@@ -291,7 +291,7 @@ pub(super) trait DescriptorHeapType {
 }
 
 #[derive(Clone)]
-pub(super) struct RtvHeapView;
+pub struct RtvHeapView;
 impl DescriptorHeapType for RtvHeapView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Rtv;
 
@@ -301,7 +301,7 @@ impl DescriptorHeapType for RtvHeapView {
 }
 
 #[derive(Clone)]
-pub(super) struct DsvHeapView;
+pub struct DsvHeapView;
 impl DescriptorHeapType for DsvHeapView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Dsv;
 
@@ -311,7 +311,7 @@ impl DescriptorHeapType for DsvHeapView {
 }
 
 #[derive(Clone)]
-pub(super) struct CbvSrvUavHeapView;
+pub struct CbvSrvUavHeapView;
 impl DescriptorHeapType for CbvSrvUavHeapView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
 

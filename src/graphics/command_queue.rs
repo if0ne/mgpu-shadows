@@ -2,7 +2,7 @@
 
 use std::{collections::VecDeque, marker::PhantomData, ops::Deref, sync::Arc};
 
-use oxidx::dx::{self, ICommandQueue, IDevice, PSO_NONE};
+use oxidx::dx::{self, ICommandQueue, IDevice, IGraphicsCommandList, PSO_NONE};
 use parking_lot::Mutex;
 
 use super::{
@@ -13,17 +13,17 @@ pub(super) trait WorkerType {
     const RAW_TYPE: dx::CommandListType;
 }
 
-pub(super) struct Graphics;
+pub struct Graphics;
 impl WorkerType for Graphics {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Direct;
 }
 
-pub(super) struct Compute;
+pub struct Compute;
 impl WorkerType for Compute {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Compute;
 }
 
-pub(super) struct Transfer;
+pub struct Transfer;
 impl WorkerType for Transfer {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Copy;
 }
@@ -61,10 +61,12 @@ impl<T: WorkerType, F: Fence> CommandQueue<T, F> {
             .map(|_| device.create_command_allocator())
             .collect::<VecDeque<CommandAllocator<T>>>();
 
-        let cmd_list = vec![device
+        let cmd_list: Vec<dx::GraphicsCommandList> = vec![device
             .raw
             .create_command_list(0, desc.r#type(), &cmd_allocators[0].raw, PSO_NONE)
             .unwrap()];
+
+        cmd_list[0].close().unwrap();
 
         Self(Arc::new(CommandQueueInner {
             device,
@@ -113,7 +115,7 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
         }
     }
 
-    pub fn wait_other_queue_on_gpu<OT: WorkerType, OF: Fence>(&self, queue: CommandQueue<OT, OF>) {
+    pub fn wait_other_queue_on_gpu<OT: WorkerType, OF: Fence>(&self, queue: &CommandQueue<OT, OF>) {
         self.queue
             .lock()
             .wait(queue.fence.get_raw(), queue.fence.get_current_value())
@@ -151,12 +153,14 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
                     None
                 }
             }) {
+            allocator.reset();
             allocator
         } else {
             self.device.create_command_allocator()
         };
 
         let list = if let Some(list) = self.cmd_list.lock().pop() {
+            list.reset(&allocator.raw, pso).unwrap();
             list
         } else {
             self.device
