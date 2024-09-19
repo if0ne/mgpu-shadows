@@ -196,7 +196,9 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
             _marker: PhantomData,
         };
 
-        self.device.raw.create_constant_buffer_view(desc, handle.cpu());
+        self.device
+            .raw
+            .create_constant_buffer_view(desc, handle.cpu());
 
         self.size += 1;
 
