@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use oxidx::dx::{self, IDevice};
 
-use super::device::Device;
+use super::{device::Device, resource::SharedResource};
 
 pub struct SharedHeap {
     shared: Arc<SharedHeapInner>,
@@ -53,6 +53,10 @@ impl SharedHeap {
             SharedHeapState::Owner => &self.shared.owner,
             SharedHeapState::Connected { device, .. } => &device,
         }
+    }
+
+    pub fn create_shared_resource(&self, offset: usize, desc: &dx::ResourceDesc) -> SharedResource {
+        SharedResource::inner_new(self, offset, desc)
     }
 }
 

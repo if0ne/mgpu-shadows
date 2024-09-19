@@ -98,15 +98,6 @@ impl Device {
         SharedHeap::inner_new(self.clone(), size)
     }
 
-    pub fn create_shared_resource(
-        &self,
-        heap: &SharedHeap,
-        offset: usize,
-        desc: &dx::ResourceDesc,
-    ) -> SharedResource {
-        SharedResource::inner_new(heap, offset, desc)
-    }
-
     pub fn is_cross_adapter_texture_supported(&self) -> bool {
         self.is_cross_adapter_texture_supported
     }

@@ -18,8 +18,7 @@ fn main() {
     let heap1 = gpu1.create_shared_heap(1920 * 1080 * 3);
     let heap2 = heap1.connect(gpu2.clone());
 
-    let res1 = gpu2.create_shared_resource(
-        &heap2,
+    let res1 = heap2.create_shared_resource(
         0,
         &ResourceDesc::texture_2d(1920, 1080)
             .with_format(Format::R8Unorm)
