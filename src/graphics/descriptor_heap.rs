@@ -116,6 +116,7 @@ impl DescriptorHeap<RtvHeapView> {
                 .inner
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
+            _marker: PhantomData,
         };
 
         self.device
@@ -154,6 +155,7 @@ impl DescriptorHeap<DsvHeapView> {
                 .inner
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
+            _marker: PhantomData,
         };
 
         self.device
@@ -191,6 +193,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
                 .inner
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
+            _marker: PhantomData,
         };
 
         self.device.raw.create_constant_buffer_view(desc, handle.cpu());
@@ -225,6 +228,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
                 .inner
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
+            _marker: PhantomData,
         };
 
         self.device
@@ -262,6 +266,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
                 .inner
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
+            _marker: PhantomData,
         };
 
         self.device.raw.create_unordered_access_view(
