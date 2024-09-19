@@ -11,7 +11,7 @@ use super::{
     descriptor_heap::{CbvSrvUavHeapView, DescriptorHeap, DsvHeapView, RtvHeapView},
     fence::{Fence, LocalFence, SharedFence},
     heap::SharedHeap,
-    resource::SharedResource,
+    resources::ConstantBuffer,
 };
 
 #[derive(Clone, Debug)]
@@ -96,6 +96,10 @@ impl Device {
 
     pub fn create_shared_heap(&self, size: usize) -> SharedHeap {
         SharedHeap::inner_new(self.clone(), size)
+    }
+
+    pub fn create_constant_buffer<T: Clone + Copy>(&self, size: usize) -> ConstantBuffer<T> {
+        ConstantBuffer::inner_new(self, size)
     }
 
     pub fn is_cross_adapter_texture_supported(&self) -> bool {

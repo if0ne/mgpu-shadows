@@ -2,6 +2,8 @@ use std::ptr::NonNull;
 
 use oxidx::dx::{self, IDevice, IResource};
 
+use crate::graphics::device::Device;
+
 #[derive(Debug)]
 pub struct ConstantBuffer<T: Clone + Copy> {
     buffer: dx::Resource,
@@ -10,9 +12,27 @@ pub struct ConstantBuffer<T: Clone + Copy> {
 }
 
 impl<T: Clone + Copy> ConstantBuffer<T> {
-    pub fn new(device: &dx::Device, size: usize) -> Self {
+    pub(in super::super) fn inner_new(device: &Device, size: usize) -> Self {
         let element_byte_size = size_of::<ConstantDataWrapper<T>>();
-        Self::new_inner(device, size, element_byte_size)
+
+        let resource: dx::Resource = device
+            .raw
+            .create_committed_resource(
+                &dx::HeapProperties::upload(),
+                dx::HeapFlags::empty(),
+                &dx::ResourceDesc::buffer(size * element_byte_size),
+                dx::ResourceStates::GenericRead,
+                None,
+            )
+            .unwrap();
+
+        let mapped_data = resource.map(0, None).unwrap();
+
+        Self {
+            buffer: resource,
+            mapped_data,
+            size,
+        }
     }
 
     pub fn resource(&self) -> &dx::Resource {
@@ -61,28 +81,6 @@ impl<T: Clone + Copy> ConstantBuffer<T> {
     }
 }
 
-impl<T: Clone + Copy> ConstantBuffer<T> {
-    fn new_inner(device: &dx::Device, size: usize, element_byte_size: usize) -> Self {
-        let resource: dx::Resource = device
-            .create_committed_resource(
-                &dx::HeapProperties::upload(),
-                dx::HeapFlags::empty(),
-                &dx::ResourceDesc::buffer(size * element_byte_size),
-                dx::ResourceStates::GenericRead,
-                None,
-            )
-            .unwrap();
-
-        let mapped_data = resource.map(0, None).unwrap();
-
-        Self {
-            buffer: resource,
-            mapped_data,
-            size,
-        }
-    }
-}
-
 impl<T: Clone + Copy> Drop for ConstantBuffer<T> {
     fn drop(&mut self) {
         self.buffer.unmap(0, None);
@@ -93,7 +91,7 @@ impl<T: Clone + Copy> Drop for ConstantBuffer<T> {
 #[repr(align(256))]
 struct ConstantDataWrapper<T>(pub T);
 
-impl<T> std::ops::Deref for ConstantBuffer<T> {
+impl<T: Clone + Copy> std::ops::Deref for ConstantDataWrapper<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -101,7 +99,7 @@ impl<T> std::ops::Deref for ConstantBuffer<T> {
     }
 }
 
-impl<T> std::ops::DerefMut for ConstantBuffer<T> {
+impl<T: Clone + Copy> std::ops::DerefMut for ConstantDataWrapper<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

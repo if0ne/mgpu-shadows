@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use oxidx::dx::{self, IDevice};
 
-use super::{device::Device, resource::SharedResource};
+use super::{device::Device, resources::SharedResource};
 
 pub struct SharedHeap {
     shared: Arc<SharedHeapInner>,

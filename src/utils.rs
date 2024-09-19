@@ -57,12 +57,3 @@ mod tests {
         assert_eq!(matrix.forward(), Vec3::Z);
     }
 }
-
-pub trait AllocationCreateDescExt {
-    fn from_oxidx_d3d12_resource_desc(
-        device: &dx::Device,
-        desc: &dx::ResourceDesc,
-        name: &str,
-        location: MemoryLocation,
-    ) -> Self;
-}

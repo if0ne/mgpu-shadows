@@ -2,7 +2,7 @@
 
 use super::{
     command_allocator::CommandAllocator, command_queue::WorkerType, device::Device,
-    resource::SharedResource,
+    resources::SharedResource,
 };
 
 use oxidx::dx::{self, IDevice, IGraphicsCommandList};

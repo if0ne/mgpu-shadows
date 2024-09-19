@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use oxidx::dx::{self, IDevice, IResource};
 
-use super::device::Device;
-use super::heap::SharedHeap;
+use super::super::device::Device;
+use super::super::heap::SharedHeap;
 
 pub trait Resource {
     type Desc;
@@ -18,7 +18,7 @@ pub struct SharedResource {
 }
 
 impl SharedResource {
-    pub(super) fn inner_new(owner: &SharedHeap, offset: usize, desc: &dx::ResourceDesc) -> Self {
+    pub(in super::super) fn inner_new(owner: &SharedHeap, offset: usize, desc: &dx::ResourceDesc) -> Self {
         let owner_local_resource = owner
             .device()
             .raw
