@@ -38,7 +38,7 @@ impl Fence for LocalFence {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LocalFence {
     pub(super) raw: dx::Fence,
     value: Arc<AtomicU64>,
@@ -55,7 +55,7 @@ impl LocalFence {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SharedFence {
     owner: Device,
     fence: dx::Fence,

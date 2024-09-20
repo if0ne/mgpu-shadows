@@ -9,6 +9,7 @@ use super::{
     fence::{Fence, LocalFence},
 };
 
+#[derive(Debug)]
 pub struct Swapchain {
     images: Vec<dx::Resource>,
     handles: Vec<ResourceDescriptor<RtvHeapView>>,

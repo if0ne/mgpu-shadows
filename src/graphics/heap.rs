@@ -1,4 +1,4 @@
-use oxidx::dx::{self, IDevice};
+use oxidx::dx::{self, ClearValue, IDevice};
 
 use super::{device::Device, resources::SharedResource};
 
@@ -46,7 +46,14 @@ impl SharedHeap {
         &self.owner
     }
 
-    pub fn create_shared_resource(&self, offset: usize, desc: dx::ResourceDesc) -> SharedResource {
-        SharedResource::inner_new(self, offset, desc)
+    pub fn create_shared_resource(
+        &self,
+        offset: usize,
+        desc: dx::ResourceDesc,
+        local_state: dx::ResourceStates,
+        share_state: dx::ResourceStates,
+        clear_color: Option<&ClearValue>,
+    ) -> SharedResource {
+        SharedResource::inner_new(self, offset, desc, local_state, share_state, clear_color)
     }
 }

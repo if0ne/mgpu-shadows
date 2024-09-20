@@ -22,11 +22,17 @@ impl SharedResource {
         owner: &SharedHeap,
         offset: usize,
         desc: dx::ResourceDesc,
+        local_state: dx::ResourceStates,
+        share_state: dx::ResourceStates,
+        clear_color: Option<&dx::ClearValue>,
     ) -> Self {
-        let flags = if owner.device().is_cross_adapter_texture_supported() {
-            dx::ResourceFlags::AllowCrossAdapter | desc.flags()
+        let (flags, state) = if owner.device().is_cross_adapter_texture_supported() {
+            (
+                dx::ResourceFlags::AllowCrossAdapter | desc.flags(),
+                local_state,
+            )
         } else {
-            dx::ResourceFlags::AllowCrossAdapter
+            (dx::ResourceFlags::AllowCrossAdapter, share_state)
         };
 
         let cross_desc = desc
@@ -37,13 +43,7 @@ impl SharedResource {
         let cross = owner
             .device()
             .raw
-            .create_placed_resource(
-                owner.heap(),
-                offset as u64,
-                &cross_desc,
-                dx::ResourceStates::Common,
-                None,
-            )
+            .create_placed_resource(owner.heap(), offset as u64, &cross_desc, state, clear_color)
             .unwrap();
 
         if owner.device().is_cross_adapter_texture_supported() {
@@ -60,8 +60,8 @@ impl SharedResource {
                     &dx::HeapProperties::default(),
                     dx::HeapFlags::empty(),
                     &desc,
-                    dx::ResourceStates::Common,
-                    None,
+                    local_state,
+                    clear_color,
                 )
                 .unwrap();
 
@@ -73,7 +73,20 @@ impl SharedResource {
         }
     }
 
-    pub fn connect(&self, other: &SharedHeap, offset: usize) -> Self {
+    pub fn connect(
+        &self,
+        other: &SharedHeap,
+        offset: usize,
+        local_state: dx::ResourceStates,
+        share_state: dx::ResourceStates,
+        clear_color: Option<&dx::ClearValue>,
+    ) -> Self {
+        let state = if other.device().is_cross_adapter_texture_supported() {
+            local_state
+        } else {
+            share_state
+        };
+
         let cross = other
             .device()
             .raw
@@ -81,8 +94,8 @@ impl SharedResource {
                 other.heap(),
                 offset as u64,
                 &self.cross_resource().get_desc(),
-                dx::ResourceStates::Common,
-                None,
+                state,
+                clear_color,
             )
             .unwrap();
 
@@ -100,8 +113,8 @@ impl SharedResource {
                     &dx::HeapProperties::default(),
                     dx::HeapFlags::empty(),
                     &self.desc,
-                    dx::ResourceStates::Common,
-                    None,
+                    local_state,
+                    clear_color,
                 )
                 .unwrap();
 

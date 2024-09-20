@@ -1,7 +1,7 @@
 use mgpu_shadows::graphics::device::Device;
 use oxidx::dx::{
-    create_debug, create_factory, Debug3, Factory4, FactoryCreationFlags, Format, IDebug,
-    IFactory4, ResourceBarrier, ResourceDesc, ResourceFlags, ResourceStates, PSO_NONE,
+    create_debug, create_factory, ClearValue, Debug3, Factory4, FactoryCreationFlags, Format,
+    IDebug, IFactory4, ResourceBarrier, ResourceDesc, ResourceFlags, ResourceStates, PSO_NONE,
 };
 
 fn main() {
@@ -24,11 +24,20 @@ fn main() {
             .with_format(Format::R8Unorm)
             .with_flags(ResourceFlags::AllowRenderTarget)
             .with_mip_levels(1),
+        ResourceStates::Common,
+        ResourceStates::CopyDest,
+        None,
     );
 
     dbg!(&res1);
 
-    let res2 = res1.connect(&heap2, 0);
+    let res2 = res1.connect(
+        &heap2,
+        0,
+        ResourceStates::RenderTarget,
+        ResourceStates::CopySource,
+        Some(&ClearValue::color(Format::R8Unorm, [0.5, 0.5, 0.5, 1.0])),
+    );
 
     dbg!(&res2);
 
@@ -42,11 +51,6 @@ fn main() {
     let handle = desc2.push(res2.local_resource(), None);
 
     let worker = queue2.get_worker_thread(PSO_NONE);
-    worker.barrier(&[ResourceBarrier::transition(
-        res2.local_resource(),
-        ResourceStates::Common,
-        ResourceStates::RenderTarget,
-    )]);
     worker.clear_rt(handle.cpu(), [0.5, 0.5, 0.5, 1.0]);
     worker.push_shared(&res2);
     queue2.push_worker(worker);
