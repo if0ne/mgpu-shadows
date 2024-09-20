@@ -42,14 +42,14 @@ impl<T: WorkerType, F: Fence> Deref for CommandQueue<T, F> {
 pub struct CommandQueueInner<T: WorkerType, F: Fence> {
     device: Device,
 
-    queue: Mutex<dx::CommandQueue>,
+    pub(super) queue: Mutex<dx::CommandQueue>,
 
     cmd_allocators: Mutex<VecDeque<CommandAllocator<T>>>,
     cmd_list: Mutex<Vec<dx::GraphicsCommandList>>,
 
     pending_list: Mutex<Vec<WorkerThread<T>>>,
     temp_buffer: Mutex<Vec<Option<dx::GraphicsCommandList>>>,
-    fence: F,
+    pub(super) fence: F,
     _marker: PhantomData<T>,
 }
 

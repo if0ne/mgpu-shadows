@@ -12,8 +12,8 @@ fn main() {
     let debug: Debug3 = create_debug().unwrap();
     debug.enable_debug_layer();
 
-    let gpu1 = Device::new(adapter1);
-    let gpu2 = Device::new(adapter2);
+    let gpu1 = Device::new(factory.clone(), adapter1);
+    let gpu2 = Device::new(factory.clone(), adapter2);
 
     let heap1 = gpu1.create_shared_heap(1920 * 1080 * 3);
     let heap2 = heap1.connect(gpu2.clone());
@@ -56,6 +56,5 @@ fn main() {
     let worker = queue1.get_worker_thread(PSO_NONE);
     worker.pull_shared(&res1);
     queue1.push_worker(worker);
-    queue1.execute();
-    queue1.wait_on_cpu(1);
+    queue1.wait_on_cpu(queue1.execute());
 }

@@ -18,7 +18,7 @@ use super::{
 pub struct Device(Arc<DeviceInner>);
 
 impl Device {
-    pub fn new(adapter: dx::Adapter3) -> Self {
+    pub fn new(factory: dx::Factory4, adapter: dx::Adapter3) -> Self {
         let name = adapter.get_desc1().unwrap().description().to_string();
 
         let raw: dx::Device = dx::create_device(Some(&adapter), dx::FeatureLevel::Level11).unwrap();
@@ -28,6 +28,7 @@ impl Device {
 
         Self(Arc::new(DeviceInner {
             name,
+            factory,
             adapter,
             raw,
             is_cross_adapter_texture_supported: feature.cross_adapter_row_major_texture_supported(),
@@ -46,6 +47,7 @@ impl Deref for Device {
 #[derive(Debug)]
 pub struct DeviceInner {
     name: String,
+    pub(super) factory: dx::Factory4,
     adapter: dx::Adapter3,
     pub(super) raw: dx::Device,
 

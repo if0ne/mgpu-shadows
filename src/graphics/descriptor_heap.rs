@@ -6,7 +6,7 @@ use oxidx::dx::{self, IDescriptorHeap, IDevice};
 
 use super::device::Device;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct ResourceDescriptor<T: DescriptorHeapType> {
     index: usize,
     gpu: dx::GpuDescriptorHandle,
@@ -290,7 +290,7 @@ pub(super) trait DescriptorHeapType {
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct RtvHeapView;
 impl DescriptorHeapType for RtvHeapView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Rtv;
@@ -300,7 +300,7 @@ impl DescriptorHeapType for RtvHeapView {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct DsvHeapView;
 impl DescriptorHeapType for DsvHeapView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Dsv;
@@ -310,7 +310,7 @@ impl DescriptorHeapType for DsvHeapView {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct CbvSrvUavHeapView;
 impl DescriptorHeapType for CbvSrvUavHeapView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;

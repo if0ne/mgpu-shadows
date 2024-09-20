@@ -5,4 +5,5 @@ pub mod device;
 pub mod fence;
 pub mod heap;
 pub mod resources;
+pub mod swapchain;
 pub mod worker_thread;
