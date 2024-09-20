@@ -20,7 +20,9 @@ impl SharedHeap {
 
         Self { owner, heap }
     }
+}
 
+impl SharedHeap {
     pub fn connect(&self, device: Device) -> Self {
         let handle = self
             .owner
@@ -44,7 +46,7 @@ impl SharedHeap {
         &self.owner
     }
 
-    pub fn create_shared_resource(&self, offset: usize, desc: &dx::ResourceDesc) -> SharedResource {
+    pub fn create_shared_resource(&self, offset: usize, desc: dx::ResourceDesc) -> SharedResource {
         SharedResource::inner_new(self, offset, desc)
     }
 }

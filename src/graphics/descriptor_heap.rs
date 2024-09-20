@@ -1,5 +1,3 @@
-#![allow(private_bounds)]
-
 use std::marker::PhantomData;
 
 use oxidx::dx::{self, IDescriptorHeap, IDevice};
@@ -27,7 +25,7 @@ impl<T: DescriptorHeapType> ResourceDescriptor<T> {
 #[derive(Debug)]
 pub struct DescriptorHeap<T: DescriptorHeapType> {
     device: Device,
-    inner: dx::DescriptorHeap,
+    raw: dx::DescriptorHeap,
     free_list: Vec<usize>,
 
     size: usize,
@@ -47,7 +45,7 @@ impl<T: DescriptorHeapType> DescriptorHeap<T> {
 
         Self {
             device,
-            inner,
+            raw: inner,
             free_list: vec![],
 
             increment_size,
@@ -68,12 +66,12 @@ impl<T: DescriptorHeapType> DescriptorHeap<T> {
         self.device.raw.copy_descriptors_simple(
             self.size as u32,
             new_inner.get_cpu_descriptor_handle_for_heap_start(),
-            self.inner.get_cpu_descriptor_handle_for_heap_start(),
+            self.raw.get_cpu_descriptor_handle_for_heap_start(),
             T::RAW_TYPE,
         );
 
         self.capacity = new_capacity;
-        self.inner = new_inner;
+        self.raw = new_inner;
     }
 
     pub fn remove(&mut self, handle: ResourceDescriptor<T>) {
@@ -86,6 +84,7 @@ impl<T: DescriptorHeapType> DescriptorHeap<T> {
             );
         }
 
+        self.size -= 1;
         self.free_list.push(handle.index);
     }
 }
@@ -109,11 +108,11 @@ impl DescriptorHeap<RtvHeapView> {
         let handle = ResourceDescriptor {
             index,
             gpu: self
-                .inner
+                .raw
                 .get_gpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
             cpu: self
-                .inner
+                .raw
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
             _marker: PhantomData,
@@ -148,11 +147,11 @@ impl DescriptorHeap<DsvHeapView> {
         let handle = ResourceDescriptor {
             index,
             gpu: self
-                .inner
+                .raw
                 .get_gpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
             cpu: self
-                .inner
+                .raw
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
             _marker: PhantomData,
@@ -186,11 +185,11 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
         let handle = ResourceDescriptor {
             index,
             gpu: self
-                .inner
+                .raw
                 .get_gpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
             cpu: self
-                .inner
+                .raw
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
             _marker: PhantomData,
@@ -223,11 +222,11 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
         let handle = ResourceDescriptor {
             index,
             gpu: self
-                .inner
+                .raw
                 .get_gpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
             cpu: self
-                .inner
+                .raw
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
             _marker: PhantomData,
@@ -261,11 +260,11 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
         let handle = ResourceDescriptor {
             index,
             gpu: self
-                .inner
+                .raw
                 .get_gpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
             cpu: self
-                .inner
+                .raw
                 .get_cpu_descriptor_handle_for_heap_start()
                 .advance(index, self.increment_size),
             _marker: PhantomData,

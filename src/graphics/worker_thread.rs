@@ -1,5 +1,3 @@
-#![allow(private_bounds)]
-
 use super::{
     command_allocator::CommandAllocator,
     command_queue::{Graphics, WorkerType},
@@ -9,6 +7,7 @@ use super::{
 
 use oxidx::dx::{self, IDevice, IGraphicsCommandList};
 
+#[derive(Debug)]
 pub struct WorkerThread<T: WorkerType> {
     pub(super) device: Device,
     pub(super) allocator: CommandAllocator<T>,

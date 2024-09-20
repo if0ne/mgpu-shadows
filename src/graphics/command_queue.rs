@@ -1,5 +1,3 @@
-#![allow(private_bounds)]
-
 use std::{collections::VecDeque, marker::PhantomData, ops::Deref, sync::Arc};
 
 use oxidx::dx::{self, ICommandQueue, IDevice, IGraphicsCommandList, PSO_NONE};
@@ -28,7 +26,7 @@ impl WorkerType for Transfer {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Copy;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CommandQueue<T: WorkerType, F: Fence>(Arc<CommandQueueInner<T, F>>);
 
 impl<T: WorkerType, F: Fence> Deref for CommandQueue<T, F> {
@@ -39,17 +37,19 @@ impl<T: WorkerType, F: Fence> Deref for CommandQueue<T, F> {
     }
 }
 
+#[derive(Debug)]
 pub struct CommandQueueInner<T: WorkerType, F: Fence> {
     device: Device,
 
-    pub(super) queue: Mutex<dx::CommandQueue>,
+    pub(super) raw: Mutex<dx::CommandQueue>,
+    pub(super) fence: F,
 
     cmd_allocators: Mutex<VecDeque<CommandAllocator<T>>>,
     cmd_list: Mutex<Vec<dx::GraphicsCommandList>>,
 
     pending_list: Mutex<Vec<WorkerThread<T>>>,
     temp_buffer: Mutex<Vec<Option<dx::GraphicsCommandList>>>,
-    pub(super) fence: F,
+
     _marker: PhantomData<T>,
 }
 
@@ -70,14 +70,15 @@ impl<T: WorkerType, F: Fence> CommandQueue<T, F> {
 
         Self(Arc::new(CommandQueueInner {
             device,
-            queue: Mutex::new(queue),
+            raw: Mutex::new(queue),
+            fence,
 
             cmd_allocators: Mutex::new(cmd_allocators),
             cmd_list: Mutex::new(cmd_list),
 
             pending_list: Default::default(),
             temp_buffer: Default::default(),
-            fence,
+
             _marker: PhantomData,
         }))
     }
@@ -86,10 +87,7 @@ impl<T: WorkerType, F: Fence> CommandQueue<T, F> {
 impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
     fn signal(&self) -> u64 {
         let value = self.fence.inc_value();
-        self.queue
-            .lock()
-            .signal(self.fence.get_raw(), value)
-            .unwrap();
+        self.raw.lock().signal(self.fence.get_raw(), value).unwrap();
         value
     }
 
@@ -117,7 +115,7 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
     }
 
     pub fn wait_other_queue_on_gpu<OT: WorkerType, OF: Fence>(&self, queue: &CommandQueue<OT, OF>) {
-        self.queue
+        self.raw
             .lock()
             .wait(queue.fence.get_raw(), queue.fence.get_current_value())
             .unwrap();
@@ -128,11 +126,11 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
 
         let lists = self.temp_buffer.lock().drain(..).collect::<Vec<_>>();
 
-        self.queue.lock().execute_command_lists(&lists);
+        self.raw.lock().execute_command_lists(&lists);
         let fence_value = self.signal();
 
         let allocators = threads.into_iter().map(|mut thread| {
-            thread.allocator.inc_fence_value();
+            thread.allocator.fence_value += 1;
             thread.allocator
         });
         self.cmd_allocators.lock().extend(allocators);
@@ -147,8 +145,8 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
 
     pub fn get_worker_thread(&self, pso: Option<&dx::PipelineState>) -> WorkerThread<T> {
         let allocator = if let Some(allocator) =
-            self.cmd_allocators.lock().pop_front().and_then(|mut a| {
-                if self.is_fence_complete(a.fence_value()) {
+            self.cmd_allocators.lock().pop_front().and_then(|a| {
+                if self.is_fence_complete(a.fence_value) {
                     Some(a)
                 } else {
                     None

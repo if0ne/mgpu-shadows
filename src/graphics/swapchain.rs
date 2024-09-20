@@ -30,7 +30,7 @@ impl Swapchain {
     ) -> Self {
         let raw = device
             .factory
-            .create_swapchain_for_hwnd(&*queue.queue.lock(), hwnd, &desc, None, OUTPUT_NONE)
+            .create_swapchain_for_hwnd(&*queue.raw.lock(), hwnd, &desc, None, OUTPUT_NONE)
             .unwrap();
 
         let images: Vec<dx::Resource> = (0..count).map(|i| raw.get_buffer(i).unwrap()).collect();

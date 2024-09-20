@@ -38,9 +38,10 @@ impl Fence for LocalFence {
     }
 }
 
+#[derive(Clone)]
 pub struct LocalFence {
     pub(super) raw: dx::Fence,
-    value: AtomicU64,
+    value: Arc<AtomicU64>,
 }
 
 impl LocalFence {
@@ -49,7 +50,7 @@ impl LocalFence {
 
         Self {
             raw: fence,
-            value: AtomicU64::default(),
+            value: Default::default(),
         }
     }
 }
@@ -77,7 +78,9 @@ impl SharedFence {
             value: Default::default(),
         }
     }
+}
 
+impl SharedFence {
     pub fn connect(&self, device: Device) -> Self {
         let handle = self
             .owner
