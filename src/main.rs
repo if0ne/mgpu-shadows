@@ -49,15 +49,13 @@ fn main() {
     )]);
     worker.clear_rt(handle.cpu(), [0.5, 0.5, 0.5, 1.0]);
     worker.push_shared(&res2);
-    worker.close();
-    queue2.push_fiber(worker);
+    queue2.push_worker(worker);
     queue2.execute();
 
     queue1.wait_other_queue_on_gpu(&queue2);
     let worker = queue1.get_worker_thread(PSO_NONE);
     worker.pull_shared(&res1);
-    worker.close();
-    queue1.push_fiber(worker);
+    queue1.push_worker(worker);
     queue1.execute();
     queue1.wait_on_cpu(1);
 }

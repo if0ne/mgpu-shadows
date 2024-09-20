@@ -33,10 +33,6 @@ impl<T: WorkerType> WorkerThread<T> {
         }
     }
 
-    pub fn close(&self) {
-        self.list.close().unwrap();
-    }
-
     pub fn pull_shared(&self, shared_resource: &SharedResource) {
         if self.device.is_cross_adapter_texture_supported() {
             return;

@@ -99,7 +99,8 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
 }
 
 impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
-    pub fn push_fiber(&self, fiber: WorkerThread<T>) {
+    pub fn push_worker(&self, fiber: WorkerThread<T>) {
+        fiber.list.close();
         self.temp_buffer.lock().push(Some(fiber.list.clone()));
         self.pending_list.lock().push(fiber);
     }
