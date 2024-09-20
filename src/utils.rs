@@ -8,7 +8,6 @@ pub trait MatrixExt {
     fn right(&self) -> glam::Vec3;
     fn up(&self) -> glam::Vec3;
     fn forward(&self) -> glam::Vec3;
-    fn create_shadow(shadow_plane: glam::Vec4, light_pos: glam::Vec4) -> Self;
 }
 
 impl MatrixExt for glam::Mat4 {
