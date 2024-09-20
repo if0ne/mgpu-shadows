@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use oxidx::dx::{self, IDevice, IResource};
 
 use super::super::device::Device;
@@ -13,15 +11,17 @@ pub trait Resource {
 
 #[derive(Clone, Debug)]
 pub struct SharedResource {
-    inner: Arc<SharedResourceInner>,
+    owner: Device,
     state: SharedResourceState,
+
+    desc: dx::ResourceDesc,
 }
 
 impl SharedResource {
     pub(in super::super) fn inner_new(
         owner: &SharedHeap,
         offset: usize,
-        desc: &dx::ResourceDesc,
+        desc: dx::ResourceDesc,
     ) -> Self {
         let flags = if owner.device().is_cross_adapter_texture_supported() {
             dx::ResourceFlags::AllowCrossAdapter | desc.flags()
@@ -29,81 +29,31 @@ impl SharedResource {
             dx::ResourceFlags::AllowCrossAdapter
         };
 
-        let owner_cross_resource = owner
+        let cross_desc = desc
+            .clone()
+            .with_flags(flags)
+            .with_layout(dx::TextureLayout::RowMajor);
+
+        let cross = owner
             .device()
             .raw
             .create_placed_resource(
                 owner.heap(),
                 offset as u64,
-                &dx::ResourceDesc::texture_2d(desc.width(), desc.height())
-                    .with_format(desc.format())
-                    .with_layout(dx::TextureLayout::RowMajor)
-                    .with_mip_levels(1)
-                    .with_flags(flags),
+                &cross_desc,
                 dx::ResourceStates::Common,
                 None,
             )
             .unwrap();
 
-        let owner_local_resource = if owner.device().is_cross_adapter_texture_supported() {
-            None
-        } else {
-            Some(
-                owner
-                    .device()
-                    .raw
-                    .create_committed_resource(
-                        &dx::HeapProperties::default(),
-                        dx::HeapFlags::empty(),
-                        desc,
-                        dx::ResourceStates::Common,
-                        None,
-                    )
-                    .unwrap(),
-            )
-        };
-
-        Self {
-            inner: Arc::new(SharedResourceInner {
-                owner: owner.device().clone(),
-                owner_local_resource,
-                owner_cross_resource,
-            }),
-            state: SharedResourceState::Owner,
-        }
-    }
-
-    pub fn connect(&self, other: &SharedHeap, offset: usize) -> Self {
-        let cross_resource = other
-            .device()
-            .raw
-            .create_placed_resource(
-                other.heap(),
-                offset as u64,
-                &self.inner.owner_cross_resource.get_desc().with_flags(
-                    self.inner.owner_cross_resource.get_desc().flags()
-                        | dx::ResourceFlags::AllowRenderTarget,
-                ),
-                dx::ResourceStates::Common,
-                None,
-            )
-            .unwrap();
-
-        if other.device().is_cross_adapter_texture_supported() {
+        if owner.device().is_cross_adapter_texture_supported() {
             Self {
-                inner: Arc::clone(&self.inner),
-                state: SharedResourceState::CrossAdapter {
-                    cross: cross_resource,
-                },
+                owner: owner.device().clone(),
+                state: SharedResourceState::CrossAdapter { cross },
+                desc,
             }
         } else {
-            let desc = self
-                .inner
-                .owner_cross_resource
-                .get_desc()
-                .with_layout(dx::TextureLayout::Unknown)
-                .with_flags(dx::ResourceFlags::empty());
-            let local_resource = other
+            let local = owner
                 .device()
                 .raw
                 .create_committed_resource(
@@ -116,58 +66,82 @@ impl SharedResource {
                 .unwrap();
 
             Self {
-                inner: Arc::clone(&self.inner),
-                state: SharedResourceState::Connected {
-                    cross: cross_resource,
-                    local: local_resource,
-                },
+                owner: owner.device().clone(),
+                state: SharedResourceState::Binded { cross, local },
+                desc,
+            }
+        }
+    }
+
+    pub fn connect(&self, other: &SharedHeap, offset: usize) -> Self {
+        let cross = other
+            .device()
+            .raw
+            .create_placed_resource(
+                other.heap(),
+                offset as u64,
+                &self.cross_resource().get_desc(),
+                dx::ResourceStates::Common,
+                None,
+            )
+            .unwrap();
+
+        if other.device().is_cross_adapter_texture_supported() {
+            Self {
+                owner: other.device().clone(),
+                state: SharedResourceState::CrossAdapter { cross },
+                desc: self.desc.clone(),
+            }
+        } else {
+            let local = other
+                .device()
+                .raw
+                .create_committed_resource(
+                    &dx::HeapProperties::default(),
+                    dx::HeapFlags::empty(),
+                    &self.desc,
+                    dx::ResourceStates::Common,
+                    None,
+                )
+                .unwrap();
+
+            Self {
+                owner: other.device().clone(),
+                state: SharedResourceState::Binded { cross, local },
+                desc: self.desc.clone(),
             }
         }
     }
 
     pub fn local_resource(&self) -> &dx::Resource {
         match &self.state {
-            SharedResourceState::Owner => self
-                .inner
-                .owner_local_resource
-                .as_ref()
-                .unwrap_or(&self.inner.owner_cross_resource),
             SharedResourceState::CrossAdapter { cross } => cross,
-            SharedResourceState::Connected { local, .. } => local,
+            SharedResourceState::Binded { local, .. } => local,
         }
     }
 
     pub fn cross_resource(&self) -> &dx::Resource {
         match &self.state {
-            SharedResourceState::Owner => &self.inner.owner_cross_resource,
             SharedResourceState::CrossAdapter { cross } => cross,
-            SharedResourceState::Connected { cross, .. } => cross,
+            SharedResourceState::Binded { cross, .. } => cross,
         }
     }
 
-    pub fn get_desc(&self) -> dx::ResourceDesc {
-        self.inner.owner_cross_resource.get_desc()
+    pub fn get_desc(&self) -> &dx::ResourceDesc {
+        &self.desc
     }
 
     pub fn owner(&self) -> &Device {
-        &self.inner.owner
+        &self.owner
     }
-}
-
-#[derive(Debug)]
-struct SharedResourceInner {
-    owner: Device,
-    owner_local_resource: Option<dx::Resource>,
-    owner_cross_resource: dx::Resource,
 }
 
 #[derive(Clone, Debug)]
 enum SharedResourceState {
-    Owner,
     CrossAdapter {
         cross: dx::Resource,
     },
-    Connected {
+    Binded {
         cross: dx::Resource,
         local: dx::Resource,
     },
