@@ -20,12 +20,12 @@ fn main() {
 
     let res1 = heap1.create_shared_resource(
         0,
-        &ResourceDesc::texture_2d(1920, 1080)
+        ResourceDesc::texture_2d(1920, 1080)
             .with_format(Format::R8Unorm)
             .with_flags(ResourceFlags::AllowRenderTarget)
             .with_mip_levels(1),
         ResourceStates::Common,
-        ResourceStates::CopyDest,
+        ResourceStates::Common,
         None,
     );
 
@@ -34,15 +34,15 @@ fn main() {
     let res2 = res1.connect(
         &heap2,
         0,
-        ResourceStates::RenderTarget,
-        ResourceStates::CopySource,
+        ResourceStates::Common,
+        ResourceStates::Common,
         Some(&ClearValue::color(Format::R8Unorm, [0.5, 0.5, 0.5, 1.0])),
     );
 
     dbg!(&res2);
 
     let fence1 = gpu1.create_shared_fence();
-    let fence2 = fence1.connect(&gpu2);
+    let fence2 = fence1.connect(gpu2.clone());
 
     let queue1 = gpu1.create_graphics_command_queue(fence1);
     let queue2 = gpu2.create_graphics_command_queue(fence2);
@@ -51,6 +51,11 @@ fn main() {
     let handle = desc2.push(res2.local_resource(), None);
 
     let worker = queue2.get_worker_thread(PSO_NONE);
+    worker.barrier(&[ResourceBarrier::transition(
+        res2.local_resource(),
+        ResourceStates::Common,
+        ResourceStates::RenderTarget,
+    )]);
     worker.clear_rt(handle.cpu(), [0.5, 0.5, 0.5, 1.0]);
     worker.push_shared(&res2);
     queue2.push_worker(worker);

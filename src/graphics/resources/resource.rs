@@ -81,10 +81,13 @@ impl SharedResource {
         share_state: dx::ResourceStates,
         clear_color: Option<&dx::ClearValue>,
     ) -> Self {
-        let state = if other.device().is_cross_adapter_texture_supported() {
-            local_state
+        let (flags, state) = if other.device().is_cross_adapter_texture_supported() {
+            (
+                dx::ResourceFlags::AllowCrossAdapter | self.desc.flags(),
+                local_state,
+            )
         } else {
-            share_state
+            (dx::ResourceFlags::AllowCrossAdapter, share_state)
         };
 
         let cross = other
@@ -93,7 +96,7 @@ impl SharedResource {
             .create_placed_resource(
                 other.heap(),
                 offset as u64,
-                &self.cross_resource().get_desc(),
+                &self.cross_resource().get_desc().with_flags(flags),
                 state,
                 clear_color,
             )
