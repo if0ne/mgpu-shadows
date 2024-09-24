@@ -11,19 +11,19 @@ pub(super) trait WorkerType {
     const RAW_TYPE: dx::CommandListType;
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Graphics;
 impl WorkerType for Graphics {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Direct;
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Compute;
 impl WorkerType for Compute {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Compute;
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Transfer;
 impl WorkerType for Transfer {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Copy;
@@ -121,6 +121,13 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
         self.raw
             .lock()
             .wait(queue.fence.get_raw(), queue.fence.get_current_value())
+            .unwrap();
+    }
+
+    pub fn wait_fence_gpu<OF: Fence>(&self, fence: &OF) {
+        self.raw
+            .lock()
+            .wait(fence.get_raw(), fence.get_current_value())
             .unwrap();
     }
 

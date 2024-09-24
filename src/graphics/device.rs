@@ -1,7 +1,7 @@
 #![allow(private_bounds)]
 #![allow(private_interfaces)]
 
-use std::{ops::Deref, sync::Arc};
+use std::{num::NonZero, ops::Deref, sync::Arc};
 
 use oxidx::dx::{self, IAdapter3, IDevice};
 
@@ -12,6 +12,7 @@ use super::{
     fence::{Fence, LocalFence, SharedFence},
     heap::SharedHeap,
     resources::ConstantBuffer,
+    swapchain::Swapchain,
 };
 
 #[derive(Clone, Debug)]
@@ -102,6 +103,17 @@ impl Device {
 
     pub fn create_constant_buffer<T: Clone + Copy>(&self, size: usize) -> ConstantBuffer<T> {
         ConstantBuffer::inner_new(self, size)
+    }
+    pub fn create_swapchain(
+        &self,
+        queue: CommandQueue<Graphics, LocalFence>,
+        rtv_heap: &mut DescriptorHeap<RtvHeapView>,
+        dsv_heap: &mut DescriptorHeap<DsvHeapView>,
+        hwnd: NonZero<isize>,
+        desc: dx::SwapchainDesc1,
+        count: usize,
+    ) -> Swapchain {
+        Swapchain::inner_new(self.clone(), queue, rtv_heap, dsv_heap, hwnd, desc, count)
     }
 
     pub fn is_cross_adapter_texture_supported(&self) -> bool {
