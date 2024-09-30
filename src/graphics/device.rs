@@ -8,7 +8,9 @@ use oxidx::dx::{self, IAdapter3, IDevice};
 use super::{
     command_allocator::CommandAllocator,
     command_queue::{CommandQueue, Compute, Graphics, Transfer, WorkerType},
-    descriptor_heap::{CbvSrvUavHeapView, DescriptorHeap, DsvHeapView, RtvHeapView},
+    descriptor_heap::{
+        CbvSrvUavHeapView, DescriptorAllocator, DescriptorHeap, DsvHeapView, RtvHeapView,
+    },
     fence::{Fence, LocalFence, SharedFence},
     heap::SharedHeap,
     resources::ConstantBuffer,
@@ -87,6 +89,16 @@ impl Device {
         capacity: usize,
     ) -> DescriptorHeap<CbvSrvUavHeapView> {
         DescriptorHeap::inner_new(self.clone(), capacity)
+    }
+
+    pub fn create_descriptor_allocator(
+        &self,
+        rtv_size: usize,
+        dsv_size: usize,
+        cbv_srv_uav_size: usize,
+        sampler_size: usize,
+    ) -> DescriptorAllocator {
+        DescriptorAllocator::inner_new(self, rtv_size, dsv_size, cbv_srv_uav_size, sampler_size)
     }
 
     pub fn create_fence(&self) -> LocalFence {
