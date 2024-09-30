@@ -283,6 +283,44 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
     }
 }
 
+impl DescriptorHeap<SamplerView> {
+    pub fn push(
+        &mut self,
+        desc: &dx::SamplerDesc,
+    ) -> ResourceDescriptor<SamplerView> {
+        let index = if let Some(free) = self.free_list.pop() {
+            free
+        } else {
+            if self.size == self.capacity {
+                self.grow();
+            }
+
+            self.size
+        };
+
+        let handle = ResourceDescriptor {
+            index,
+            gpu: self
+                .raw
+                .get_gpu_descriptor_handle_for_heap_start()
+                .advance(index, self.increment_size),
+            cpu: self
+                .raw
+                .get_cpu_descriptor_handle_for_heap_start()
+                .advance(index, self.increment_size),
+            _marker: PhantomData,
+        };
+
+        self.device
+            .raw
+            .create_sampler(desc, handle.cpu());
+
+        self.size += 1;
+
+        handle
+    }
+}
+
 pub(super) trait DescriptorHeapType {
     const RAW_TYPE: dx::DescriptorHeapType;
 
@@ -316,5 +354,15 @@ impl DescriptorHeapType for CbvSrvUavHeapView {
 
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
         dx::DescriptorHeapDesc::cbr_srv_uav(num)
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct SamplerView;
+impl DescriptorHeapType for SamplerView {
+    const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Sampler;
+
+    fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
+        dx::DescriptorHeapDesc::sampler(num)
     }
 }
