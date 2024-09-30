@@ -1,7 +1,7 @@
 use oxidx::dx::{self, IDevice, IResource};
 
 use super::super::device::Device;
-use super::super::heap::SharedHeap;
+use super::super::heaps::SharedHeap;
 
 pub trait Resource {
     type Desc;

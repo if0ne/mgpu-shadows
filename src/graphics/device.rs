@@ -12,7 +12,7 @@ use super::{
         CbvSrvUavHeapView, DescriptorAllocator, DescriptorHeap, DsvHeapView, RtvHeapView,
     },
     fence::{Fence, LocalFence, SharedFence},
-    heap::SharedHeap,
+    heaps::SharedHeap,
     resources::ConstantBuffer,
     swapchain::Swapchain,
 };

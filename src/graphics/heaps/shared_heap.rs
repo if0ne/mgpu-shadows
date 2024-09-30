@@ -9,7 +9,7 @@ pub struct SharedHeap {
 }
 
 impl SharedHeap {
-    pub(super) fn inner_new(owner: Device, size: usize) -> Self {
+    pub(in super::super) fn inner_new(owner: Device, size: usize) -> Self {
         let heap = owner
             .raw
             .create_heap(
