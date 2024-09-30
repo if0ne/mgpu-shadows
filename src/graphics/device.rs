@@ -1,7 +1,11 @@
 #![allow(private_bounds)]
 #![allow(private_interfaces)]
 
-use std::{num::NonZero, ops::Deref, sync::Arc};
+use std::{
+    num::NonZero,
+    ops::Deref,
+    sync::{Arc, Weak},
+};
 
 use oxidx::dx::{self, IAdapter3, IDevice};
 
@@ -20,6 +24,9 @@ use super::{
 #[derive(Clone, Debug)]
 pub struct Device(Arc<DeviceInner>);
 
+#[derive(Clone, Debug)]
+pub struct WeakDevice(Weak<DeviceInner>);
+
 impl Device {
     pub fn new(factory: dx::Factory4, adapter: dx::Adapter3) -> Self {
         let name = adapter.get_desc1().unwrap().description().to_string();
@@ -36,6 +43,14 @@ impl Device {
             raw,
             is_cross_adapter_texture_supported: feature.cross_adapter_row_major_texture_supported(),
         }))
+    }
+}
+
+impl Deref for WeakDevice {
+    type Target = DeviceInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0.upgrade().unwrap()
     }
 }
 
