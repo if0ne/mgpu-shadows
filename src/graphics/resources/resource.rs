@@ -1,4 +1,4 @@
-use oxidx::dx::{self, IDevice, IResource};
+use oxidx::dx::{self, IResource};
 
 use super::super::device::Device;
 use super::super::heaps::SharedHeap;

@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, ops::Deref, sync::Arc};
 
 use oxidx::dx::{self, IDescriptorHeap, IDevice};
-use parking_lot::{lock_api::Mutex, Mutex};
+use parking_lot::Mutex;
 
 use super::device::Device;
 
@@ -92,8 +92,8 @@ impl DescriptorAllocatorInner {
         self.dsv.lock().push(resource, desc)
     }
 
-    pub fn push_sampler(&self, desc: Option<&dx::SampleDesc>) -> ResourceDescriptor<SamplerView> {
-        self.sampler.lock().push(resource, desc)
+    pub fn push_sampler(&self, desc: &dx::SamplerDesc) -> ResourceDescriptor<SamplerView> {
+        self.sampler.lock().push(desc)
     }
 
     pub fn push_cbv(
@@ -113,13 +113,13 @@ impl DescriptorAllocatorInner {
 
     pub fn push_uav(
         &self,
-        resources: &dx::Resource,
-        counter_resources: Option<&dx::Resource>,
+        resource: &dx::Resource,
+        counter_resource: Option<&dx::Resource>,
         desc: Option<&dx::UnorderedAccessViewDesc>,
     ) -> ResourceDescriptor<CbvSrvUavHeapView> {
         self.cbv_srv_uav
             .lock()
-            .push_uav(resource, counter_resources, desc)
+            .push_uav(resource, counter_resource, desc)
     }
 }
 
