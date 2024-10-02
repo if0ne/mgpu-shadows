@@ -9,20 +9,19 @@ use oxidx::dx::{self, IDevice, IResource};
 
 use crate::graphics::{device::Device, heaps::Upload};
 
-use super::buffer::{Buffer, BufferType};
+use super::buffer::{BaseBuffer, Buffer};
 
 #[derive(Debug)]
-pub struct ConstantBufferType<T: Clone + Debug> {
+pub struct ConstantBuffer<T: Clone> {
+    buffer: BaseBuffer<Upload>,
     mapped_data: NonNull<ConstantDataWrapper<T>>,
     size: usize,
     marker: PhantomData<T>,
 }
 
-impl<T: Clone + Debug> BufferType for ConstantBufferType<T> {}
+impl<T: Clone> Buffer for ConstantBufferType<T> {}
 
-pub type ConstantBuffer<T: Clone + Debug> = Buffer<ConstantBufferType<T>, Upload>;
-
-impl<T: Clone + Debug> ConstantBuffer<T> {
+impl<T: Clone> ConstantBuffer<T> {
     pub(in super::super) fn inner_new(device: &Device, size: usize) -> Self {
         let element_byte_size = size_of::<ConstantDataWrapper<T>>();
 
@@ -40,14 +39,14 @@ impl<T: Clone + Debug> ConstantBuffer<T> {
         let mapped_data = resource.map(0, None).unwrap();
 
         Self {
-            raw: resource,
-            state: dx::ResourceStates::GenericRead,
-            allocation: None,
-            inner: ConstantBufferType {
-                mapped_data,
-                size,
-                marker: PhantomData,
+            buffer: BaseBuffer {
+                raw: resource,
+                state: dx::ResourceStates::GenericRead,
+                allocation: None,
             },
+            mapped_data,
+            size,
+            marker: PhantomData,
         }
     }
 
@@ -73,6 +72,12 @@ impl<T: Clone + Debug> Index<usize> for ConstantBuffer<T> {
 impl<T: Clone + Debug> IndexMut<usize> for ConstantBuffer<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut *self.as_slice_mut()[index]
+    }
+}
+
+impl<T: Clone> Drop for ConstantBuffer<T> {
+    fn drop(&mut self) {
+        self.buffer.raw.unmap(0, None);
     }
 }
 
