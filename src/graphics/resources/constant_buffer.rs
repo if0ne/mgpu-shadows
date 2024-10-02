@@ -19,7 +19,7 @@ pub struct ConstantBuffer<T: Clone> {
     marker: PhantomData<T>,
 }
 
-impl<T: Clone> Buffer for ConstantBufferType<T> {}
+impl<T: Clone> Buffer for ConstantBuffer<T> {}
 
 impl<T: Clone> ConstantBuffer<T> {
     pub(in super::super) fn inner_new(device: &Device, size: usize) -> Self {
@@ -52,12 +52,12 @@ impl<T: Clone> ConstantBuffer<T> {
 
     fn as_slice(&self) -> &[ConstantDataWrapper<T>] {
         unsafe {
-            std::slice::from_raw_parts(self.inner.mapped_data.as_ptr() as *const _, self.inner.size)
+            std::slice::from_raw_parts(self.mapped_data.as_ptr() as *const _, self.size)
         }
     }
 
     fn as_slice_mut(&mut self) -> &mut [ConstantDataWrapper<T>] {
-        unsafe { std::slice::from_raw_parts_mut(self.inner.mapped_data.as_ptr(), self.inner.size) }
+        unsafe { std::slice::from_raw_parts_mut(self.mapped_data.as_ptr(), self.size) }
     }
 }
 

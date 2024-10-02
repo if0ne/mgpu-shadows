@@ -1,6 +1,6 @@
 use oxidx::dx::{self, ClearValue, IDevice};
 
-use super::{device::Device, resources::SharedResource};
+use crate::graphics::{device::Device, resources::SharedResource};
 
 #[derive(Clone)]
 pub struct SharedHeap {

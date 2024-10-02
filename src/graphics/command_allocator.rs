@@ -28,6 +28,7 @@ impl<T: WorkerType> CommandAllocator<T> {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 mod tests {
     use super::CommandAllocator;
     use crate::graphics::command_queue::Graphics;

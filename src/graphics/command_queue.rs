@@ -7,7 +7,7 @@ use super::{
     command_allocator::CommandAllocator, device::Device, fence::Fence, worker_thread::WorkerThread,
 };
 
-pub(super) trait WorkerType {
+pub trait WorkerType {
     const RAW_TYPE: dx::CommandListType;
 }
 

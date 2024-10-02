@@ -2,31 +2,35 @@ use oxidx::dx::{self, IDevice};
 use parking_lot::Mutex;
 use std::{marker::PhantomData, ops::Deref, sync::Arc};
 
-use crate::graphics::{device::WeakDevice, resources::Resource};
+use crate::graphics::{device::Device, resources::Resource};
 
 pub trait HeapType {
     const RAW_TYPE: dx::HeapType;
     const RAW_FLAGS: dx::HeapFlags;
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Default;
 impl HeapType for Default {
     const RAW_TYPE: dx::HeapType = dx::HeapType::Default;
     const RAW_FLAGS: dx::HeapFlags = dx::HeapFlags::empty();
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Upload;
 impl HeapType for Upload {
     const RAW_TYPE: dx::HeapType = dx::HeapType::Upload;
     const RAW_FLAGS: dx::HeapFlags = dx::HeapFlags::empty();
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Readback;
 impl HeapType for Readback {
     const RAW_TYPE: dx::HeapType = dx::HeapType::Readback;
     const RAW_FLAGS: dx::HeapFlags = dx::HeapFlags::empty();
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Shared;
 impl HeapType for Shared {
     const RAW_TYPE: dx::HeapType = dx::HeapType::Default;
@@ -44,7 +48,7 @@ pub struct Allocation<T: HeapType> {
 pub struct LocalHeap<T: HeapType>(Arc<LocalHeapInner<T>>);
 
 impl<T: HeapType> LocalHeap<T> {
-    pub(in super::super) fn inner_new(device: WeakDevice, size: usize) -> Self {
+    pub(in super::super) fn inner_new(device: Device, size: usize) -> Self {
         let desc = dx::HeapDesc::new(
             size,
             dx::HeapProperties::new(
