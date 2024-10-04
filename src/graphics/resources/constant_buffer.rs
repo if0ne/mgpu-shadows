@@ -14,7 +14,7 @@ use super::buffer::{BaseBuffer, Buffer};
 #[derive(Debug)]
 pub struct ConstantBuffer<T: Clone> {
     buffer: BaseBuffer<Upload>,
-    mapped_data: NonNull<ConstantDataWrapper<T>>,
+    mapped_data: NonNull<T>,
     size: usize,
     marker: PhantomData<T>,
 }
@@ -23,7 +23,9 @@ impl<T: Clone> Buffer for ConstantBuffer<T> {}
 
 impl<T: Clone> ConstantBuffer<T> {
     pub(in super::super) fn inner_new(device: &Device, size: usize) -> Self {
-        let element_byte_size = size_of::<ConstantDataWrapper<T>>();
+        const { assert!(std::mem::align_of::<T>() == 256); };
+
+        let element_byte_size = size_of::<T>();
 
         let resource: dx::Resource = device
             .raw
@@ -50,13 +52,13 @@ impl<T: Clone> ConstantBuffer<T> {
         }
     }
 
-    fn as_slice(&self) -> &[ConstantDataWrapper<T>] {
+    fn as_slice(&self) -> &[T] {
         unsafe {
             std::slice::from_raw_parts(self.mapped_data.as_ptr() as *const _, self.size)
         }
     }
 
-    fn as_slice_mut(&mut self) -> &mut [ConstantDataWrapper<T>] {
+    fn as_slice_mut(&mut self) -> &mut [T] {
         unsafe { std::slice::from_raw_parts_mut(self.mapped_data.as_ptr(), self.size) }
     }
 }
@@ -78,23 +80,5 @@ impl<T: Clone + Debug> IndexMut<usize> for ConstantBuffer<T> {
 impl<T: Clone> Drop for ConstantBuffer<T> {
     fn drop(&mut self) {
         self.buffer.raw.unmap(0, None);
-    }
-}
-
-#[derive(Clone, Debug)]
-#[repr(align(256))]
-struct ConstantDataWrapper<T>(pub T);
-
-impl<T: Clone> std::ops::Deref for ConstantDataWrapper<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T: Clone> std::ops::DerefMut for ConstantDataWrapper<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }
