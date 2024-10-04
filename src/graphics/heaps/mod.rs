@@ -1,5 +1,3 @@
-mod local_heap;
-mod shared_heap;
+mod heap;
 
-pub use local_heap::*;
-pub use shared_heap::*;
+pub use heap::*;

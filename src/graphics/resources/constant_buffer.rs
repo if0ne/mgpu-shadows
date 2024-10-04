@@ -23,7 +23,9 @@ impl<T: Clone> Buffer for ConstantBuffer<T> {}
 
 impl<T: Clone> ConstantBuffer<T> {
     pub(in super::super) fn inner_new(device: &Device, size: usize) -> Self {
-        const { assert!(std::mem::align_of::<T>() == 256); };
+        const {
+            assert!(std::mem::align_of::<T>() == 256);
+        };
 
         let element_byte_size = size_of::<T>();
 
@@ -53,9 +55,7 @@ impl<T: Clone> ConstantBuffer<T> {
     }
 
     fn as_slice(&self) -> &[T] {
-        unsafe {
-            std::slice::from_raw_parts(self.mapped_data.as_ptr() as *const _, self.size)
-        }
+        unsafe { std::slice::from_raw_parts(self.mapped_data.as_ptr() as *const _, self.size) }
     }
 
     fn as_slice_mut(&mut self) -> &mut [T] {
@@ -67,13 +67,13 @@ impl<T: Clone + Debug> Index<usize> for ConstantBuffer<T> {
     type Output = T;
 
     fn index(&self, index: usize) -> &Self::Output {
-        &*self.as_slice()[index]
+        &self.as_slice()[index]
     }
 }
 
 impl<T: Clone + Debug> IndexMut<usize> for ConstantBuffer<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut *self.as_slice_mut()[index]
+        &mut self.as_slice_mut()[index]
     }
 }
 

@@ -1,11 +1,7 @@
 #![allow(private_bounds)]
 #![allow(private_interfaces)]
 
-use std::{
-    num::NonZero,
-    ops::Deref,
-    sync::Arc,
-};
+use std::{num::NonZero, ops::Deref, sync::Arc};
 
 use oxidx::dx::{self, IAdapter3, IDevice};
 
@@ -16,7 +12,7 @@ use super::{
         CbvSrvUavHeapView, DescriptorAllocator, DescriptorHeap, DsvHeapView, RtvHeapView,
     },
     fence::{Fence, LocalFence, SharedFence},
-    heaps::SharedHeap,
+    heaps::{HeapType, MemoryHeap},
     resources::ConstantBuffer,
     swapchain::Swapchain,
 };
@@ -113,8 +109,8 @@ impl Device {
         SharedFence::inner_new(self.clone())
     }
 
-    pub fn create_shared_heap(&self, size: usize) -> SharedHeap {
-        SharedHeap::inner_new(self.clone(), size)
+    pub fn create_heap<T: HeapType>(&self, size: usize) -> MemoryHeap<T> {
+        MemoryHeap::inner_new(self.clone(), size)
     }
 
     pub fn create_constant_buffer<T: Clone + Copy>(&self, size: usize) -> ConstantBuffer<T> {

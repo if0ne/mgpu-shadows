@@ -1,24 +1,26 @@
 use oxidx::dx::{self, IDevice, IResource};
 
+use crate::graphics::heaps::{Allocation, HeapType, MemoryHeap, Shared};
+
 use super::super::device::Device;
-use super::super::heaps::SharedHeap;
 
 pub trait Resource {
-    type Desc;
+    type Desc: Into<dx::ResourceDesc>;
 
     fn get_desc(&self) -> Self::Desc;
+    fn from_raw_placed<H: HeapType>(raw: dx::Resource, allocation: Allocation<H>) -> Self;
 }
 
 #[derive(Clone, Debug)]
-pub struct SharedResource {
+pub struct SharedResource<R: Resource> {
     owner: Device,
-    state: SharedResourceState,
+    state: SharedResourceState<R>,
 
     desc: dx::ResourceDesc,
 }
 
-impl SharedResource {
-    pub(in super::super) fn inner_new(
+impl<R: Resource> SharedResource<R> {
+    /*pub(in super::super) fn inner_new(
         owner: &SharedHeap,
         offset: usize,
         desc: dx::ResourceDesc,
@@ -71,17 +73,17 @@ impl SharedResource {
                 desc,
             }
         }
-    }
+    }*/
 
     pub fn connect(
         &self,
-        other: &SharedHeap,
+        other: &MemoryHeap<Shared>,
         offset: usize,
         local_state: dx::ResourceStates,
         share_state: dx::ResourceStates,
         clear_color: Option<&dx::ClearValue>,
     ) -> Self {
-        let (flags, state) = if other.device().is_cross_adapter_texture_supported() {
+        let (flags, state) = if other.device.is_cross_adapter_texture_supported() {
             (
                 dx::ResourceFlags::AllowCrossAdapter | self.desc.flags(),
                 local_state,
@@ -90,27 +92,22 @@ impl SharedResource {
             (dx::ResourceFlags::AllowCrossAdapter, share_state)
         };
 
-        let cross = other
-            .device()
-            .raw
-            .create_placed_resource(
-                other.heap(),
-                offset as u64,
-                &self.cross_resource().get_desc().with_flags(flags),
-                state,
-                clear_color,
-            )
-            .unwrap();
+        let cross = other.create_placed_resource(
+            &self.cross_resource().get_desc().with_flags(flags),
+            offset,
+            state,
+            clear_color,
+        );
 
-        if other.device().is_cross_adapter_texture_supported() {
+        if other.device.is_cross_adapter_texture_supported() {
             Self {
-                owner: other.device().clone(),
+                owner: other.device.clone(),
                 state: SharedResourceState::CrossAdapter { cross },
                 desc: self.desc.clone(),
             }
         } else {
             let local = other
-                .device()
+                .device
                 .raw
                 .create_committed_resource(
                     &dx::HeapProperties::default(),
@@ -122,21 +119,21 @@ impl SharedResource {
                 .unwrap();
 
             Self {
-                owner: other.device().clone(),
+                owner: other.device.clone(),
                 state: SharedResourceState::Binded { cross, local },
                 desc: self.desc.clone(),
             }
         }
     }
 
-    pub fn local_resource(&self) -> &dx::Resource {
+    pub fn local_resource(&self) -> &R {
         match &self.state {
             SharedResourceState::CrossAdapter { cross } => cross,
             SharedResourceState::Binded { local, .. } => local,
         }
     }
 
-    pub fn cross_resource(&self) -> &dx::Resource {
+    pub fn cross_resource(&self) -> &R {
         match &self.state {
             SharedResourceState::CrossAdapter { cross } => cross,
             SharedResourceState::Binded { cross, .. } => cross,
@@ -153,12 +150,7 @@ impl SharedResource {
 }
 
 #[derive(Clone, Debug)]
-enum SharedResourceState {
-    CrossAdapter {
-        cross: dx::Resource,
-    },
-    Binded {
-        cross: dx::Resource,
-        local: dx::Resource,
-    },
+enum SharedResourceState<R: Resource> {
+    CrossAdapter { cross: R },
+    Binded { cross: R, local: R },
 }

@@ -41,25 +41,7 @@ impl DescriptorAllocator {
             sampler: Mutex::new(DescriptorHeap::inner_new(device.clone(), sampler_size)),
         }))
     }
-}
 
-impl Deref for DescriptorAllocator {
-    type Target = DescriptorAllocatorInner;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[derive(Debug)]
-pub struct DescriptorAllocatorInner {
-    rtv: Mutex<DescriptorHeap<RtvHeapView>>,
-    dsv: Mutex<DescriptorHeap<DsvHeapView>>,
-    cbv_srv_uav: Mutex<DescriptorHeap<CbvSrvUavHeapView>>,
-    sampler: Mutex<DescriptorHeap<SamplerView>>,
-}
-
-impl DescriptorAllocatorInner {
     pub fn remove_rtv(&self, handle: ResourceDescriptor<RtvHeapView>) {
         self.rtv.lock().remove(handle)
     }
@@ -69,29 +51,29 @@ impl DescriptorAllocatorInner {
     }
 
     pub fn remove_cbv(&self, handle: ResourceDescriptor<CbvView>) {
-        self.cbv_srv_uav.lock().remove(ResourceDescriptor { 
-            index: handle.index, 
-            gpu: handle.gpu, 
-            cpu: handle.cpu, 
-            _marker: PhantomData 
+        self.cbv_srv_uav.lock().remove(ResourceDescriptor {
+            index: handle.index,
+            gpu: handle.gpu,
+            cpu: handle.cpu,
+            _marker: PhantomData,
         })
     }
 
     pub fn remove_srv(&self, handle: ResourceDescriptor<SrvView>) {
-        self.cbv_srv_uav.lock().remove(ResourceDescriptor { 
-            index: handle.index, 
-            gpu: handle.gpu, 
-            cpu: handle.cpu, 
-            _marker: PhantomData 
+        self.cbv_srv_uav.lock().remove(ResourceDescriptor {
+            index: handle.index,
+            gpu: handle.gpu,
+            cpu: handle.cpu,
+            _marker: PhantomData,
         })
     }
 
     pub fn remove_uav(&self, handle: ResourceDescriptor<UavView>) {
-        self.cbv_srv_uav.lock().remove(ResourceDescriptor { 
-            index: handle.index, 
-            gpu: handle.gpu, 
-            cpu: handle.cpu, 
-            _marker: PhantomData 
+        self.cbv_srv_uav.lock().remove(ResourceDescriptor {
+            index: handle.index,
+            gpu: handle.gpu,
+            cpu: handle.cpu,
+            _marker: PhantomData,
         })
     }
 
@@ -122,7 +104,7 @@ impl DescriptorAllocatorInner {
     pub fn push_cbv(
         &self,
         desc: Option<&dx::ConstantBufferViewDesc>,
-    ) -> ResourceDescriptor<CbvSrvUavHeapView> {
+    ) -> ResourceDescriptor<CbvView> {
         self.cbv_srv_uav.lock().push_cbv(desc)
     }
 
@@ -130,7 +112,7 @@ impl DescriptorAllocatorInner {
         &self,
         resource: &dx::Resource,
         desc: Option<&dx::ShaderResourceViewDesc>,
-    ) -> ResourceDescriptor<CbvSrvUavHeapView> {
+    ) -> ResourceDescriptor<SrvView> {
         self.cbv_srv_uav.lock().push_srv(resource, desc)
     }
 
@@ -139,11 +121,27 @@ impl DescriptorAllocatorInner {
         resource: &dx::Resource,
         counter_resource: Option<&dx::Resource>,
         desc: Option<&dx::UnorderedAccessViewDesc>,
-    ) -> ResourceDescriptor<CbvSrvUavHeapView> {
+    ) -> ResourceDescriptor<UavView> {
         self.cbv_srv_uav
             .lock()
             .push_uav(resource, counter_resource, desc)
     }
+}
+
+impl Deref for DescriptorAllocator {
+    type Target = DescriptorAllocatorInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Debug)]
+pub struct DescriptorAllocatorInner {
+    rtv: Mutex<DescriptorHeap<RtvHeapView>>,
+    dsv: Mutex<DescriptorHeap<DsvHeapView>>,
+    cbv_srv_uav: Mutex<DescriptorHeap<CbvSrvUavHeapView>>,
+    sampler: Mutex<DescriptorHeap<SamplerView>>,
 }
 
 #[derive(Debug)]

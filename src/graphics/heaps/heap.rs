@@ -1,10 +1,9 @@
-use oxidx::dx::{self, IDevice};
-use parking_lot::Mutex;
+use oxidx::dx::{self, IDevice, ResourceStates};
 use std::{marker::PhantomData, ops::Deref, sync::Arc};
 
 use crate::graphics::{device::Device, resources::Resource};
 
-pub trait HeapType {
+pub trait HeapType: Clone {
     const RAW_TYPE: dx::HeapType;
     const RAW_FLAGS: dx::HeapFlags;
 }
@@ -39,15 +38,15 @@ impl HeapType for Shared {
 
 #[derive(Debug)]
 pub struct Allocation<T: HeapType> {
-    pub(super) heap: LocalHeap<T>,
+    pub(super) heap: MemoryHeap<T>,
     pub(super) offset: usize,
     pub(super) size: usize,
 }
 
 #[derive(Clone, Debug)]
-pub struct LocalHeap<T: HeapType>(Arc<LocalHeapInner<T>>);
+pub struct MemoryHeap<T: HeapType>(Arc<MemoryHeapInner<T>>);
 
-impl<T: HeapType> LocalHeap<T> {
+impl<T: HeapType> MemoryHeap<T> {
     pub(in super::super) fn inner_new(device: Device, size: usize) -> Self {
         let desc = dx::HeapDesc::new(
             size,
@@ -62,17 +61,67 @@ impl<T: HeapType> LocalHeap<T> {
 
         let heap = device.raw.create_heap(&desc).unwrap();
 
-        Self(Arc::new(LocalHeapInner {
+        Self(Arc::new(MemoryHeapInner {
+            device,
             heap: heap,
             size: size,
-            free_list: Mutex::new(vec![]),
+            _marker: PhantomData,
+        }))
+    }
+
+    pub(in super::super) fn create_placed_resource<R: Resource>(
+        &self,
+        desc: R::Desc,
+        offset: usize,
+        initial_state: ResourceStates,
+        optimized_clear_value: Option<&dx::ClearValue>,
+    ) -> R {
+        let desc = desc.into();
+
+        let resource: dx::Resource = self
+            .device
+            .raw
+            .create_placed_resource(
+                &self.heap,
+                offset,
+                &desc,
+                initial_state,
+                optimized_clear_value,
+            )
+            .unwrap();
+
+        R::from_raw_placed(
+            resource,
+            Allocation {
+                heap: self.clone(),
+                offset: offset,
+                size: self.size,
+            },
+        )
+    }
+}
+
+impl MemoryHeap<Shared> {
+    pub fn connect(&self, device: Device) -> MemoryHeap<Shared> {
+        let handle = self
+            .device
+            .raw
+            .create_shared_handle(&self.heap, None)
+            .unwrap();
+        let heap = device.raw.open_shared_handle(handle).unwrap();
+        handle.close().unwrap();
+
+        MemoryHeap(Arc::new(MemoryHeapInner {
+            device,
+            heap,
+            size: self.size,
             _marker: PhantomData,
         }))
     }
 }
 
-impl<T: HeapType> Deref for LocalHeap<T> {
-    type Target = LocalHeapInner<T>;
+impl<T: HeapType> Deref for MemoryHeap<T> {
+    type Target = MemoryHeapInner<T>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -80,22 +129,9 @@ impl<T: HeapType> Deref for LocalHeap<T> {
 }
 
 #[derive(Debug)]
-pub struct LocalHeapInner<T: HeapType> {
-    heap: dx::Heap,
+pub struct MemoryHeapInner<T: HeapType> {
+    pub(in super::super) device: Device,
+    pub(in super::super) heap: dx::Heap,
     size: usize,
-    free_list: Mutex<Vec<Allocation<T>>>,
     _marker: PhantomData<T>,
-}
-
-impl<T: HeapType> LocalHeapInner<T> {
-    pub(in super::super) fn create_placed_resource<R: Resource>(
-        &self,
-        resource: R::Desc,
-    ) -> Allocation<T> {
-        todo!()
-    }
-
-    pub(in super::super) fn free(&self, allocation: Allocation<T>) {
-        todo!()
-    }
 }
