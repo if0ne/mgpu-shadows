@@ -7,9 +7,15 @@ use std::{
 
 use oxidx::dx::{self, IDevice, IResource};
 
-use crate::graphics::{device::Device, heaps::Upload};
+use crate::graphics::{
+    device::Device,
+    heaps::{Allocation, Upload},
+};
 
-use super::buffer::{BaseBuffer, Buffer};
+use super::{
+    buffer::{BaseBuffer, Buffer},
+    Resource,
+};
 
 #[derive(Debug)]
 pub struct ConstantBuffer<T: Clone> {
@@ -81,4 +87,39 @@ impl<T: Clone> Drop for ConstantBuffer<T> {
     fn drop(&mut self) {
         self.buffer.raw.unmap(0, None);
     }
+}
+
+impl<T: Clone> Resource for ConstantBuffer<T> {
+    type Desc = ConstantBufferDesc;
+
+    fn get_desc(&self) -> Self::Desc {
+        todo!()
+    }
+
+    fn from_desc<H: crate::graphics::heaps::HeapType>(device: &Device, desc: Self::Desc) -> Self {
+        todo!()
+    }
+
+    fn from_raw_placed<H: crate::graphics::heaps::HeapType>(
+        raw: dx::Resource,
+        desc: Self::Desc,
+        allocation: Allocation<Upload>,
+    ) -> Self {
+        let mapped = raw.map(0, None).unwrap();
+        Self {
+            buffer: BaseBuffer {
+                raw,
+                state: dx::ResourceStates::GenericRead,
+                allocation: Some(allocation),
+            },
+            mapped_data: mapped,
+            size: desc.size,
+            marker: PhantomData,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ConstantBufferDesc {
+    size: usize,
 }

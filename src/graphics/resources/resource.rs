@@ -8,7 +8,12 @@ pub trait Resource {
     type Desc: Into<dx::ResourceDesc>;
 
     fn get_desc(&self) -> Self::Desc;
-    fn from_raw_placed<H: HeapType>(raw: dx::Resource, allocation: Allocation<H>) -> Self;
+    fn from_desc<H: HeapType>(device: &Device, desc: Self::Desc) -> Self;
+    fn from_raw_placed<H: HeapType>(
+        raw: dx::Resource,
+        desc: Self::Desc,
+        allocation: Allocation<H>,
+    ) -> Self;
 }
 
 #[derive(Clone, Debug)]

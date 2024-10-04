@@ -13,7 +13,7 @@ use super::{
     },
     fence::{Fence, LocalFence, SharedFence},
     heaps::{HeapType, MemoryHeap},
-    resources::ConstantBuffer,
+    resources::{ConstantBuffer, Resource},
     swapchain::Swapchain,
 };
 
@@ -113,9 +113,10 @@ impl Device {
         MemoryHeap::inner_new(self.clone(), size)
     }
 
-    pub fn create_constant_buffer<T: Clone + Copy>(&self, size: usize) -> ConstantBuffer<T> {
-        ConstantBuffer::inner_new(self, size)
+    pub fn create_commited_resource<R: Resource>(&self, desc: R::Desc) -> R {
+        R::from_desc(&self, desc)
     }
+
     pub fn create_swapchain(
         &self,
         queue: CommandQueue<Graphics, LocalFence>,
