@@ -25,6 +25,7 @@ pub trait Resource {
     ) -> Self;
 
     fn from_raw_placed(
+        heap: &MemoryHeap,
         raw: dx::Resource,
         desc: Self::Desc,
         access: Self::Access,

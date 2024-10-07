@@ -6,7 +6,7 @@ use parking_lot::Mutex;
 use crate::graphics::{
     descriptor_heap::{CbvView, DescriptorAllocator, ResourceDescriptor},
     device::Device,
-    heaps::{Allocation, MemoryHeapType},
+    heaps::{Allocation, MemoryHeap, MemoryHeapType},
 };
 
 use super::{
@@ -195,6 +195,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
     }
 
     fn from_raw_placed(
+        _heap: &MemoryHeap,
         raw: dx::Resource,
         desc: Self::Desc,
         access: Self::Access,

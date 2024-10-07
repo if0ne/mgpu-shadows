@@ -59,6 +59,7 @@ impl MemoryHeap {
             .unwrap();
 
         R::from_raw_placed(
+            self,
             resource,
             desc,
             access,

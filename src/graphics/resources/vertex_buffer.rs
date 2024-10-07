@@ -5,11 +5,12 @@ use parking_lot::Mutex;
 
 use crate::graphics::{
     device::Device,
-    heaps::{Allocation, MemoryHeapType},
+    heaps::{Allocation, MemoryHeap, MemoryHeapType},
 };
 
 use super::{
     buffer::{BaseBuffer, Buffer},
+    staging_buffer::{StagingBuffer, StagingBufferDesc},
     NoGpuAccess, Resource, ResourceDesc,
 };
 
@@ -29,6 +30,7 @@ pub struct VertexBufferInner<T: Clone> {
     buffer: BaseBuffer,
     count: usize,
     view: dx::VertexBufferView,
+    staging_buffer: Option<StagingBuffer<T>>,
     marker: PhantomData<T>,
 }
 
@@ -36,6 +38,7 @@ impl<T: Clone> Buffer for VertexBuffer<T> {}
 
 impl<T: Clone> VertexBuffer<T> {
     pub(in super::super) fn inner_new(
+        device: &Device,
         resource: dx::Resource,
         desc: VertexBufferDesc<T>,
         state: dx::ResourceStates,
@@ -47,6 +50,18 @@ impl<T: Clone> VertexBuffer<T> {
             desc.count * size_of::<T>(),
         );
 
+        let staging_buffer = if desc.mtype == MemoryHeapType::Cpu {
+            Some(StagingBuffer::from_desc(
+                device,
+                StagingBufferDesc::new(desc.count),
+                NoGpuAccess,
+                dx::ResourceStates::CopySource,
+                None,
+            ))
+        } else {
+            None
+        };
+
         Self(Arc::new(VertexBufferInner {
             buffer: BaseBuffer {
                 raw: resource,
@@ -56,6 +71,7 @@ impl<T: Clone> VertexBuffer<T> {
                 allocation,
             },
             count: desc.count,
+            staging_buffer,
             view,
             marker: PhantomData,
         }))
@@ -66,11 +82,13 @@ impl<T: Clone> VertexBuffer<T> {
     pub fn view(&self) -> dx::VertexBufferView {
         self.view
     }
-}
 
-impl<T: Clone> Drop for VertexBuffer<T> {
-    fn drop(&mut self) {
-        self.buffer.raw.unmap(0, None);
+    pub fn memory_type(&self) -> MemoryHeapType {
+        if self.staging_buffer.is_some() {
+            MemoryHeapType::Gpu
+        } else {
+            MemoryHeapType::Cpu
+        }
     }
 }
 
@@ -98,6 +116,7 @@ impl<T: Clone> Resource for VertexBuffer<T> {
     fn get_desc(&self) -> Self::Desc {
         VertexBufferDesc {
             count: self.count,
+            mtype: self.memory_type(),
             _marker: PhantomData,
         }
     }
@@ -122,10 +141,11 @@ impl<T: Clone> Resource for VertexBuffer<T> {
             )
             .unwrap();
 
-        Self::inner_new(resource, desc, dx::ResourceStates::Common, None)
+        Self::inner_new(device, resource, desc, dx::ResourceStates::Common, None)
     }
 
     fn from_raw_placed(
+        heap: &MemoryHeap,
         raw: dx::Resource,
         desc: Self::Desc,
         _access: Self::Access,
@@ -137,13 +157,14 @@ impl<T: Clone> Resource for VertexBuffer<T> {
                 || allocation.heap.mtype == MemoryHeapType::Gpu
         );
 
-        Self::inner_new(raw, desc, state, Some(allocation))
+        Self::inner_new(&heap.device, raw, desc, state, Some(allocation))
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct VertexBufferDesc<T> {
     count: usize,
+    mtype: MemoryHeapType,
     _marker: PhantomData<T>,
 }
 
@@ -151,8 +172,14 @@ impl<T> VertexBufferDesc<T> {
     pub fn new(size: usize) -> Self {
         Self {
             count: size,
+            mtype: MemoryHeapType::Gpu,
             _marker: PhantomData,
         }
+    }
+
+    pub fn move_to_cpu(mut self) -> Self {
+        self.mtype = MemoryHeapType::Cpu;
+        self
     }
 }
 
