@@ -37,6 +37,11 @@ pub struct Texture2DInner {
     srv: Mutex<Option<ResourceDescriptor<SrvView>>>,
     uav: Mutex<Option<ResourceDescriptor<UavView>>>,
 
+    // TODO: cached descriptors
+    // cached_rtv: Mutex<HashMap<RtvDesc, ResourceDescriptor<RtvHeapView>>>
+    // cached_dsv: Mutex<HashMap<DsvDesc, ResourceDescriptor<DsvHeapView>>>
+    // cached_srv: Mutex<HashMap<SrvDesc, ResourceDescriptor<SrvView>>>
+    // cached_uav: Mutex<HashMap<UavDesc, ResourceDescriptor<UavView>>>
     access: GpuOnlyDescriptorAccess,
 
     staging_buffer: StagingBuffer<u8>,
@@ -157,6 +162,26 @@ impl Texture2D {
 
                 handle
             }
+        }
+    }
+}
+
+impl Drop for Texture2DInner {
+    fn drop(&mut self) {
+        if let Some(rtv) = *self.rtv.lock() {
+            self.access.0.remove_rtv(rtv);
+        }
+
+        if let Some(dsv) = *self.dsv.lock() {
+            self.access.0.remove_dsv(dsv);
+        }
+
+        if let Some(srv) = *self.srv.lock() {
+            self.access.0.remove_srv(srv);
+        }
+
+        if let Some(uav) = *self.uav.lock() {
+            self.access.0.remove_uav(uav);
         }
     }
 }

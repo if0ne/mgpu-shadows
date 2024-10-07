@@ -53,6 +53,7 @@ impl<T: Clone> ConstantBuffer<T> {
                 ConstantBufferGpuAccess::Addresses(Self::create_addresses(base_loc, desc.count))
             }
             GpuAccess::Descriptor(descriptor_allocator) => ConstantBufferGpuAccess::Descriptors(
+                descriptor_allocator.clone(),
                 Self::create_cbvs(base_loc, desc.count, &descriptor_allocator),
             ),
         };
@@ -122,15 +123,23 @@ impl<T: Clone> ConstantBuffer<T> {
 
     pub fn get_descriptor(&self, index: usize) -> ResourceDescriptor<CbvView> {
         match self.access {
-            ConstantBufferGpuAccess::Descriptors(ref vec) => vec[index],
+            ConstantBufferGpuAccess::Descriptors(_, ref vec) => vec[index],
             _ => unreachable!(),
         }
     }
 }
 
-impl<T: Clone> Drop for ConstantBuffer<T> {
+impl<T: Clone> Drop for ConstantBufferInner<T> {
     fn drop(&mut self) {
         self.buffer.raw.unmap(0, None);
+
+        if let ConstantBufferGpuAccess::Descriptors(ref allocator, ref mut vec) = self.access {
+            let handles = std::mem::take(vec);
+
+            for handle in handles {
+                allocator.remove_cbv(handle);
+            }
+        }
     }
 }
 
@@ -241,14 +250,8 @@ impl<T: Clone> ResourceDesc for ConstantBufferDesc<T> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum ConstantBufferGpuAccess {
     Addresses(Vec<dx::GpuVirtualAddress>),
-    Descriptors(Vec<ResourceDescriptor<CbvView>>),
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum ConstantBufferGpuItem {
-    Address(dx::GpuVirtualAddress),
-    Descriptor(ResourceDescriptor<CbvView>),
+    Descriptors(DescriptorAllocator, Vec<ResourceDescriptor<CbvView>>),
 }
