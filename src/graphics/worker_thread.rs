@@ -94,7 +94,7 @@ impl<T: WorkerType> WorkerThread<T> {
         self.list.resource_barrier(barriers);
     }
 
-    pub fn upload_to_vertex_buffer<VT: Clone>(&self, dst: &VertexBuffer<VT>, src: &[VT]) {
+    pub fn upload_to_vertex_buffer<VT: Clone + Copy>(&self, dst: &VertexBuffer<VT>, src: &[VT]) {
         if let Some(barrier) = dst.get_barrier(dx::ResourceStates::CopyDest, 0) {
             self.barrier(&[barrier]);
         }

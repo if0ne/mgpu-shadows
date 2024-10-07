@@ -38,7 +38,7 @@ pub struct VertexBufferInner<T: Clone> {
 
 impl<T: Clone> Buffer for VertexBuffer<T> {}
 
-impl<T: Clone> VertexBuffer<T> {
+impl<T: Clone + Copy> VertexBuffer<T> {
     pub(in super::super) fn inner_new(
         device: &Device,
         resource: dx::Resource,
@@ -118,7 +118,7 @@ impl<T: Clone> VertexBuffer<T> {
     }
 }
 
-impl<T: Clone> Resource for VertexBuffer<T> {
+impl<T: Clone + Copy> Resource for VertexBuffer<T> {
     type Desc = VertexBufferDesc<T>;
     type Access = NoGpuAccess;
 

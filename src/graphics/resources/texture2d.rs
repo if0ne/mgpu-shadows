@@ -286,7 +286,7 @@ impl Texture2DDesc {}
 
 impl Into<dx::ResourceDesc> for Texture2DDesc {
     fn into(self) -> dx::ResourceDesc {
-        dx::ResourceDesc::texture_2d(self.width as u64, self.height)
+        dx::ResourceDesc::texture_2d(self.width, self.height)
     }
 }
 

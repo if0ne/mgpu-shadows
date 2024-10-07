@@ -44,7 +44,7 @@ impl MemoryHeap {
         initial_state: ResourceStates,
         optimized_clear_value: Option<&dx::ClearValue>,
     ) -> R {
-        let raw_desc = desc.into();
+        let raw_desc = desc.clone().into();
 
         let resource: dx::Resource = self
             .device
