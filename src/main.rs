@@ -1,8 +1,13 @@
 use std::num::NonZero;
 
-use mgpu_shadows::graphics::swapchain::{Swapchain};
+use mgpu_shadows::graphics::{
+    device::Device,
+    heaps::MemoryHeapType,
+    resources::{GpuOnlyDescriptorAccess, SharedResource, Texture2D, Texture2DDesc},
+    swapchain::Swapchain,
+};
 use oxidx::dx::{
-    Rect, Viewport,
+    create_debug, create_factory, Debug, Factory4, FactoryCreationFlags, Format, IDebug, IFactory4, Rect, ResourceFlags, ResourceStates, Viewport
 };
 use winit::{
     application::ApplicationHandler,
@@ -13,7 +18,52 @@ use winit::{
 };
 
 fn main() {
-    run_sample::<Sample>();
+    //run_sample::<Sample>();
+    let factory: Factory4 = create_factory(FactoryCreationFlags::Debug).unwrap();
+    let adapter = factory.enum_adapters(0).unwrap();
+
+    let debug: Debug = create_debug().unwrap();
+    debug.enable_debug_layer();
+
+    let gpu1 = Device::new(factory, adapter);
+    let heap1 = gpu1.create_heap(1920 * 1080 * 3, MemoryHeapType::Shared);
+    let desc1 = gpu1.create_descriptor_allocator(8, 8, 8, 8);
+
+    let factory: Factory4 = create_factory(FactoryCreationFlags::Debug).unwrap();
+    let adapter = factory.enum_warp_adapters().unwrap();
+
+    let gpu2 = Device::new(factory, adapter);
+    let heap2 = heap1.connect(gpu2.clone());
+    let desc2 = gpu2.create_descriptor_allocator(8, 8, 8, 8);
+
+    let res1: SharedResource<Texture2D> = gpu1.create_shared_resource(
+        &heap1,
+        0,
+        Texture2DDesc {
+            width: 1920,
+            height: 1080,
+            format: Format::R8Unorm,
+            flags: ResourceFlags::AllowRenderTarget,
+            layout: oxidx::dx::TextureLayout::Unknown,
+            mip_levels: 1,
+        },
+        GpuOnlyDescriptorAccess(desc1.clone()),
+        ResourceStates::RenderTarget,
+        ResourceStates::CopyDest,
+        None,
+    );
+
+    let res2 = res1.connect(
+        &heap2,
+        0,
+        GpuOnlyDescriptorAccess(desc2.clone()),
+        ResourceStates::RenderTarget,
+        ResourceStates::CopyDest,
+        None,
+    );
+
+    dbg!(res1);
+    dbg!(res2);
 }
 
 #[derive(Debug)]

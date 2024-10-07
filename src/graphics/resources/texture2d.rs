@@ -266,7 +266,7 @@ impl Resource for Texture2D {
         state: dx::ResourceStates,
         allocation: Allocation,
     ) -> Self {
-        assert!(allocation.heap.mtype == MemoryHeapType::Gpu);
+        assert!(allocation.heap.mtype == MemoryHeapType::Gpu || allocation.heap.mtype == MemoryHeapType::Shared);
 
         Self::inner_new(&heap.device, raw, desc, access, state, Some(allocation))
     }
@@ -287,6 +287,10 @@ impl Texture2DDesc {}
 impl Into<dx::ResourceDesc> for Texture2DDesc {
     fn into(self) -> dx::ResourceDesc {
         dx::ResourceDesc::texture_2d(self.width, self.height)
+            .with_format(self.format)
+            .with_flags(self.flags)
+            .with_layout(self.layout)
+            .with_mip_levels(self.mip_levels)
     }
 }
 

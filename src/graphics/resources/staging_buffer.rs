@@ -113,12 +113,12 @@ impl<T: Clone> Resource for StagingBuffer<T> {
                 &dx::HeapProperties::upload(),
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
-                dx::ResourceStates::CopySource,
+                dx::ResourceStates::GenericRead,
                 None,
             )
             .unwrap();
 
-        Self::inner_new(resource, desc, dx::ResourceStates::CopySource, None)
+        Self::inner_new(resource, desc, dx::ResourceStates::GenericRead, None)
     }
 
     fn from_raw_placed(
@@ -130,7 +130,7 @@ impl<T: Clone> Resource for StagingBuffer<T> {
         allocation: Allocation,
     ) -> Self {
         assert!(allocation.heap.mtype == MemoryHeapType::Cpu);
-        assert!(state == dx::ResourceStates::CopySource);
+        assert!(state == dx::ResourceStates::GenericRead);
 
         Self::inner_new(raw, desc, state, Some(allocation))
     }
