@@ -12,7 +12,11 @@ pub trait Resource {
     type Access: Clone;
 
     fn get_raw(&self) -> &dx::Resource;
-    fn get_barrier(&self, state: dx::ResourceStates) -> Option<dx::ResourceBarrier<'_>>;
+    fn get_barrier(
+        &self,
+        state: dx::ResourceStates,
+        subresource: usize,
+    ) -> Option<dx::ResourceBarrier<'_>>;
     fn get_desc(&self) -> Self::Desc;
 
     fn from_desc(
@@ -56,7 +60,7 @@ impl PartialEq for GpuAccess {
 impl Eq for GpuAccess {}
 
 #[derive(Clone, Debug)]
-pub struct GpuOnlyDescriptorAccess(DescriptorAllocator);
+pub struct GpuOnlyDescriptorAccess(pub DescriptorAllocator);
 
 #[derive(Clone, Debug)]
 pub struct NoGpuAccess;

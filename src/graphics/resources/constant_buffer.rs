@@ -142,7 +142,11 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
         &self.buffer.raw
     }
 
-    fn get_barrier(&self, _state: dx::ResourceStates) -> Option<dx::ResourceBarrier<'_>> {
+    fn get_barrier(
+        &self,
+        _state: dx::ResourceStates,
+        _subresource: usize,
+    ) -> Option<dx::ResourceBarrier<'_>> {
         None
     }
 

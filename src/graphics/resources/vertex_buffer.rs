@@ -126,7 +126,11 @@ impl<T: Clone> Resource for VertexBuffer<T> {
         &self.buffer.raw
     }
 
-    fn get_barrier(&self, state: dx::ResourceStates) -> Option<dx::ResourceBarrier<'_>> {
+    fn get_barrier(
+        &self,
+        state: dx::ResourceStates,
+        _subresource: usize,
+    ) -> Option<dx::ResourceBarrier<'_>> {
         let mut guard = self.buffer.state.lock();
         let old = *guard;
         *guard = state;
