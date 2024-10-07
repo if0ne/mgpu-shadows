@@ -62,6 +62,7 @@ impl MemoryHeap {
             resource,
             desc,
             access,
+            initial_state,
             Allocation {
                 heap: self.clone(),
                 offset: offset,

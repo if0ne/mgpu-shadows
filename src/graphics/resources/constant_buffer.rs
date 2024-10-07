@@ -29,7 +29,7 @@ impl<T: Clone> Deref for ConstantBuffer<T> {
 pub struct ConstantBufferInner<T: Clone> {
     buffer: BaseBuffer,
     mapped_data: Mutex<NonNull<T>>,
-    size: usize,
+    count: usize,
     access: ConstantBufferGpuAccess,
     marker: PhantomData<T>,
 }
@@ -39,8 +39,9 @@ impl<T: Clone> Buffer for ConstantBuffer<T> {}
 impl<T: Clone> ConstantBuffer<T> {
     pub(in super::super) fn inner_new(
         resource: dx::Resource,
-        desc: ConstantBufferDesc,
+        desc: ConstantBufferDesc<T>,
         access: GpuAccess,
+        state: dx::ResourceStates,
         allocation: Option<Allocation>,
     ) -> Self {
         let mapped_data = resource.map::<T>(0, None).unwrap();
@@ -49,23 +50,23 @@ impl<T: Clone> ConstantBuffer<T> {
 
         let access = match access {
             GpuAccess::Address => {
-                ConstantBufferGpuAccess::Addresses(Self::create_addresses(base_loc, desc.size))
+                ConstantBufferGpuAccess::Addresses(Self::create_addresses(base_loc, desc.count))
             }
             GpuAccess::Descriptor(descriptor_allocator) => ConstantBufferGpuAccess::Descriptors(
-                Self::create_cbvs(base_loc, desc.size, &descriptor_allocator),
+                Self::create_cbvs(base_loc, desc.count, &descriptor_allocator),
             ),
         };
 
         Self(Arc::new(ConstantBufferInner {
             buffer: BaseBuffer {
                 raw: resource,
-                size: desc.size * size_of::<T>(),
-                state: Mutex::new(dx::ResourceStates::GenericRead),
-                flags: desc.flags,
+                size: desc.count * size_of::<T>(),
+                state: Mutex::new(state),
+                flags: dx::ResourceFlags::empty(),
                 allocation,
             },
             mapped_data: Mutex::new(mapped_data),
-            size: desc.size,
+            count: desc.count,
             access,
             marker: PhantomData,
         }))
@@ -101,14 +102,14 @@ impl<T: Clone> ConstantBuffer<T> {
     pub fn read(&self, index: usize) -> T {
         let guard = self.mapped_data.lock();
         let slice =
-            unsafe { std::slice::from_raw_parts::<T>(guard.as_ptr() as *const _, self.size) };
+            unsafe { std::slice::from_raw_parts::<T>(guard.as_ptr() as *const _, self.count) };
         slice[index].clone()
     }
 
     pub fn write(&self, index: usize, value: T) {
         let mut guard = self.mapped_data.lock();
         let slice =
-            unsafe { std::slice::from_raw_parts_mut::<T>(guard.as_mut() as *mut _, self.size) };
+            unsafe { std::slice::from_raw_parts_mut::<T>(guard.as_mut() as *mut _, self.count) };
         slice[index] = value;
     }
 
@@ -134,7 +135,7 @@ impl<T: Clone> Drop for ConstantBuffer<T> {
 }
 
 impl<T: Clone> Resource for ConstantBuffer<T> {
-    type Desc = ConstantBufferDesc;
+    type Desc = ConstantBufferDesc<T>;
     type Access = GpuAccess;
 
     fn get_raw(&self) -> &dx::Resource {
@@ -156,8 +157,8 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
 
     fn get_desc(&self) -> Self::Desc {
         ConstantBufferDesc {
-            size: self.size,
-            flags: self.buffer.flags,
+            count: self.count,
+            _marker: PhantomData,
         }
     }
 
@@ -178,19 +179,26 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
             .create_committed_resource(
                 &dx::HeapProperties::upload(),
                 dx::HeapFlags::empty(),
-                &dx::ResourceDesc::buffer(desc.size * element_byte_size),
+                &dx::ResourceDesc::buffer(desc.count * element_byte_size),
                 dx::ResourceStates::GenericRead,
                 None,
             )
             .unwrap();
 
-        Self::inner_new(resource, desc, access, None)
+        Self::inner_new(
+            resource,
+            desc,
+            access,
+            dx::ResourceStates::GenericRead,
+            None,
+        )
     }
 
     fn from_raw_placed(
         raw: dx::Resource,
         desc: Self::Desc,
         access: Self::Access,
+        state: dx::ResourceStates,
         allocation: Allocation,
     ) -> Self {
         const {
@@ -198,38 +206,37 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
         };
         assert!(allocation.heap.mtype == MemoryHeapType::Cpu);
 
-        Self::inner_new(raw, desc, access, Some(allocation))
+        Self::inner_new(raw, desc, access, state, Some(allocation))
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct ConstantBufferDesc {
-    size: usize,
-    flags: dx::ResourceFlags,
+pub struct ConstantBufferDesc<T> {
+    count: usize,
+    _marker: PhantomData<T>,
 }
 
-impl ConstantBufferDesc {
-    pub fn new(size: usize) -> Self {
+impl<T> ConstantBufferDesc<T> {
+    pub fn new(count: usize) -> Self {
         Self {
-            size,
-            flags: dx::ResourceFlags::empty(),
+            count,
+            _marker: PhantomData,
         }
     }
 }
 
-impl Into<dx::ResourceDesc> for ConstantBufferDesc {
+impl<T> Into<dx::ResourceDesc> for ConstantBufferDesc<T> {
     fn into(self) -> dx::ResourceDesc {
-        dx::ResourceDesc::buffer(self.size)
+        dx::ResourceDesc::buffer(self.count * size_of::<T>())
     }
 }
 
-impl ResourceDesc for ConstantBufferDesc {
+impl<T: Clone> ResourceDesc for ConstantBufferDesc<T> {
     fn flags(&self) -> dx::ResourceFlags {
-        self.flags
+        dx::ResourceFlags::empty()
     }
 
-    fn with_flags(mut self, flags: dx::ResourceFlags) -> Self {
-        self.flags = flags;
+    fn with_flags(self, _flags: dx::ResourceFlags) -> Self {
         self
     }
 

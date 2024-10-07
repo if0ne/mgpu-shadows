@@ -28,6 +28,7 @@ pub trait Resource {
         raw: dx::Resource,
         desc: Self::Desc,
         access: Self::Access,
+        state: dx::ResourceStates,
         allocation: Allocation,
     ) -> Self;
 }
@@ -56,6 +57,9 @@ impl Eq for GpuAccess {}
 
 #[derive(Clone, Debug)]
 pub struct GpuOnlyDescriptorAccess(DescriptorAllocator);
+
+#[derive(Clone, Debug)]
+pub struct NoGpuAccess;
 
 #[derive(Clone, Debug)]
 pub struct SharedResource<R: Resource> {
