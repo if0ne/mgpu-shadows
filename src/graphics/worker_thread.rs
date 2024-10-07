@@ -2,7 +2,7 @@ use super::{
     command_allocator::CommandAllocator,
     command_queue::{Graphics, WorkerType},
     device::Device,
-    resources::{IndexBuffer, IndexBufferType, Resource, SharedResource, VertexBuffer},
+    resources::{IndexBuffer, IndexBufferType, Resource, SharedResource, Texture2D, VertexBuffer},
 };
 
 use oxidx::dx::{self, IDevice, IGraphicsCommandList};
@@ -42,13 +42,13 @@ impl<T: WorkerType> WorkerThread<T> {
 
         if let Some(shared_state) = shared_resource
             .cross_resource()
-            .get_barrier(dx::ResourceStates::CopySource)
+            .get_barrier(dx::ResourceStates::CopySource, 0)
         {
             barriers.push(shared_state);
         }
         if let Some(local_state) = shared_resource
             .local_resource()
-            .get_barrier(dx::ResourceStates::CopyDest)
+            .get_barrier(dx::ResourceStates::CopyDest, 0)
         {
             barriers.push(local_state);
         }
@@ -70,13 +70,13 @@ impl<T: WorkerType> WorkerThread<T> {
 
         if let Some(shared_state) = shared_resource
             .cross_resource()
-            .get_barrier(dx::ResourceStates::CopyDest)
+            .get_barrier(dx::ResourceStates::CopyDest, 0)
         {
             barriers.push(shared_state);
         }
         if let Some(local_state) = shared_resource
             .local_resource()
-            .get_barrier(dx::ResourceStates::CopySource)
+            .get_barrier(dx::ResourceStates::CopySource, 0)
         {
             barriers.push(local_state);
         }
@@ -95,13 +95,13 @@ impl<T: WorkerType> WorkerThread<T> {
     }
 
     pub fn upload_to_vertex_buffer<VT: Clone>(&self, dst: &VertexBuffer<VT>, src: &[VT]) {
-        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::CopyDest) {
+        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::CopyDest, 0) {
             self.barrier(&[barrier]);
         }
 
         dst.upload_data(self, src);
 
-        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::GenericRead) {
+        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::GenericRead, 0) {
             self.barrier(&[barrier]);
         }
     }
@@ -111,13 +111,26 @@ impl<T: WorkerType> WorkerThread<T> {
         dst: &IndexBuffer<IT>,
         src: &[IT::Raw],
     ) {
-        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::CopyDest) {
+        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::CopyDest, 0) {
             self.barrier(&[barrier]);
         }
 
         dst.upload_data(self, src);
 
-        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::GenericRead) {
+        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::GenericRead, 0) {
+            self.barrier(&[barrier]);
+        }
+    }
+
+    pub fn upload_to_texture2d(&self, dst: &Texture2D, src: &[u8]) {
+        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::CopyDest, 0) {
+            self.barrier(&[barrier]);
+        }
+
+        dst.upload_data(self, src);
+
+        // TODO: Return in prev state?
+        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::Common, 0) {
             self.barrier(&[barrier]);
         }
     }

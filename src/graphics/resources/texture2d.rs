@@ -1,12 +1,14 @@
 use std::{fmt::Debug, ops::Deref, sync::Arc};
 
-use oxidx::dx::{self, IDevice};
+use oxidx::dx::{self, IDevice, IGraphicsCommandListExt};
 use parking_lot::Mutex;
 
 use crate::graphics::{
+    command_queue::WorkerType,
     descriptor_heap::{DsvHeapView, ResourceDescriptor, RtvHeapView, SrvView, UavView},
     device::Device,
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
+    worker_thread::WorkerThread,
 };
 
 use super::{
@@ -164,6 +166,22 @@ impl Texture2D {
             }
         }
     }
+
+    pub(in super::super) fn upload_data<WT: WorkerType>(
+        &self,
+        worker: &WorkerThread<WT>,
+        src: &[u8],
+    ) {
+        let src = [dx::SubresourceData::new(src)];
+
+        worker.list.update_subresources_fixed::<1, _, _>(
+            &self.raw,
+            self.staging_buffer.get_raw(),
+            0,
+            0..1,
+            &src,
+        );
+    }
 }
 
 impl Drop for Texture2DInner {
@@ -204,7 +222,12 @@ impl Resource for Texture2D {
         *guard = state;
 
         if old != state {
-            Some(dx::ResourceBarrier::transition(self.get_raw(), old, state))
+            Some(dx::ResourceBarrier::transition(
+                self.get_raw(),
+                old,
+                state,
+                Some(subresource as u32),
+            ))
         } else {
             None
         }
@@ -232,14 +255,7 @@ impl Resource for Texture2D {
             )
             .unwrap();
 
-        Self::inner_new(
-            device,
-            resource,
-            desc,
-            access,
-            dx::ResourceStates::GenericRead,
-            None,
-        )
+        Self::inner_new(device, resource, desc, access, init_state, None)
     }
 
     fn from_raw_placed(

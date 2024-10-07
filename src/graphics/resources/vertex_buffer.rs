@@ -136,7 +136,12 @@ impl<T: Clone> Resource for VertexBuffer<T> {
         *guard = state;
 
         if old != state {
-            Some(dx::ResourceBarrier::transition(self.get_raw(), old, state))
+            Some(dx::ResourceBarrier::transition(
+                self.get_raw(),
+                old,
+                state,
+                None,
+            ))
         } else {
             None
         }
