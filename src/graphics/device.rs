@@ -12,8 +12,8 @@ use super::{
         CbvSrvUavHeapView, DescriptorAllocator, DescriptorHeap, DsvHeapView, RtvHeapView,
     },
     fence::{Fence, LocalFence, SharedFence},
-    heaps::{HeapType, MemoryHeap},
-    resources::{ConstantBuffer, Resource},
+    heaps::{MemoryHeap, MemoryHeapType},
+    resources::Resource,
     swapchain::Swapchain,
 };
 
@@ -109,12 +109,17 @@ impl Device {
         SharedFence::inner_new(self.clone())
     }
 
-    pub fn create_heap<T: HeapType>(&self, size: usize) -> MemoryHeap<T> {
-        MemoryHeap::inner_new(self.clone(), size)
+    pub fn create_heap(&self, size: usize, mtype: MemoryHeapType) -> MemoryHeap {
+        MemoryHeap::inner_new(self.clone(), size, mtype)
     }
 
-    pub fn create_commited_resource<R: Resource>(&self, desc: R::Desc) -> R {
-        R::from_desc(&self, desc)
+    pub fn create_commited_resource<R: Resource>(
+        &self,
+        desc: R::Desc,
+        init_state: dx::ResourceStates,
+        clear_color: Option<&dx::ClearValue>,
+    ) -> R {
+        R::from_desc(&self, desc, init_state, clear_color)
     }
 
     pub fn create_swapchain(

@@ -1,19 +1,29 @@
-use oxidx::dx::{self, IDevice, IResource};
+use oxidx::dx;
 
-use crate::graphics::heaps::{Allocation, HeapType, MemoryHeap, Shared};
+use crate::graphics::heaps::{Allocation, MemoryHeap};
 
 use super::super::device::Device;
 
 pub trait Resource {
-    type Desc: Into<dx::ResourceDesc>;
+    type Desc: ResourceDesc;
 
+    fn get_raw(&self) -> &dx::Resource;
+    fn set_current_state(&self, state: dx::ResourceStates) -> dx::ResourceStates;
+    fn get_current_state(&self) -> dx::ResourceStates;
     fn get_desc(&self) -> Self::Desc;
-    fn from_desc<H: HeapType>(device: &Device, desc: Self::Desc) -> Self;
-    fn from_raw_placed<H: HeapType>(
-        raw: dx::Resource,
+
+    fn from_desc(
+        device: &Device,
         desc: Self::Desc,
-        allocation: Allocation<H>,
+        init_state: dx::ResourceStates,
+        clear_color: Option<&dx::ClearValue>,
     ) -> Self;
+    fn from_raw_placed(raw: dx::Resource, desc: Self::Desc, allocation: Allocation) -> Self;
+}
+
+pub trait ResourceDesc: Into<dx::ResourceDesc> + Clone {
+    fn flags(&self) -> dx::ResourceFlags;
+    fn with_flags(self, flags: dx::ResourceFlags) -> Self;
 }
 
 #[derive(Clone, Debug)]
@@ -21,7 +31,7 @@ pub struct SharedResource<R: Resource> {
     owner: Device,
     state: SharedResourceState<R>,
 
-    desc: dx::ResourceDesc,
+    desc: R::Desc,
 }
 
 impl<R: Resource> SharedResource<R> {
@@ -82,7 +92,7 @@ impl<R: Resource> SharedResource<R> {
 
     pub fn connect(
         &self,
-        other: &MemoryHeap<Shared>,
+        other: &MemoryHeap,
         offset: usize,
         local_state: dx::ResourceStates,
         share_state: dx::ResourceStates,
@@ -98,7 +108,7 @@ impl<R: Resource> SharedResource<R> {
         };
 
         let cross = other.create_placed_resource(
-            &self.cross_resource().get_desc().with_flags(flags),
+            self.cross_resource().get_desc().with_flags(flags),
             offset,
             state,
             clear_color,
@@ -111,17 +121,7 @@ impl<R: Resource> SharedResource<R> {
                 desc: self.desc.clone(),
             }
         } else {
-            let local = other
-                .device
-                .raw
-                .create_committed_resource(
-                    &dx::HeapProperties::default(),
-                    dx::HeapFlags::empty(),
-                    &self.desc,
-                    local_state,
-                    clear_color,
-                )
-                .unwrap();
+            let local = R::from_desc(&other.device, self.desc.clone(), local_state, clear_color);
 
             Self {
                 owner: other.device.clone(),
@@ -145,7 +145,7 @@ impl<R: Resource> SharedResource<R> {
         }
     }
 
-    pub fn get_desc(&self) -> &dx::ResourceDesc {
+    pub fn get_desc(&self) -> &R::Desc {
         &self.desc
     }
 

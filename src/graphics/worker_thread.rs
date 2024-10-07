@@ -2,7 +2,7 @@ use super::{
     command_allocator::CommandAllocator,
     command_queue::{Graphics, WorkerType},
     device::Device,
-    resources::SharedResource,
+    resources::{Resource, SharedResource},
 };
 
 use oxidx::dx::{self, IDevice, IGraphicsCommandList};
@@ -32,51 +32,65 @@ impl<T: WorkerType> WorkerThread<T> {
         }
     }
 
-    pub fn pull_shared(&self, shared_resource: &SharedResource) {
+    pub fn pull_shared<R: Resource>(&self, shared_resource: &SharedResource<R>) {
         if self.device.is_cross_adapter_texture_supported() {
             return;
         }
 
+        let local_state = shared_resource
+            .local_resource()
+            .set_current_state(dx::ResourceStates::CopyDest);
+        let shared_state = shared_resource
+            .cross_resource()
+            .set_current_state(dx::ResourceStates::CopySource);
+
         self.list.resource_barrier(&[
             dx::ResourceBarrier::transition(
-                shared_resource.local_resource(),
-                dx::ResourceStates::Common,
+                shared_resource.local_resource().get_raw(),
+                local_state,
                 dx::ResourceStates::CopyDest,
             ),
             dx::ResourceBarrier::transition(
-                shared_resource.cross_resource(),
-                dx::ResourceStates::Common,
+                shared_resource.cross_resource().get_raw(),
+                shared_state,
                 dx::ResourceStates::CopySource,
             ),
         ]);
 
         self.list.copy_resource(
-            shared_resource.local_resource(),
-            shared_resource.cross_resource(),
+            shared_resource.local_resource().get_raw(),
+            shared_resource.cross_resource().get_raw(),
         );
     }
 
-    pub fn push_shared(&self, shared_resource: &SharedResource) {
+    pub fn push_shared<R: Resource>(&self, shared_resource: &SharedResource<R>) {
         if self.device.is_cross_adapter_texture_supported() {
             return;
         }
 
+        let shared_state = shared_resource
+            .cross_resource()
+            .set_current_state(dx::ResourceStates::CopyDest);
+        let local_state = shared_resource
+            .local_resource()
+            .set_current_state(dx::ResourceStates::CopySource);
+
         self.list.resource_barrier(&[
             dx::ResourceBarrier::transition(
-                shared_resource.cross_resource(),
-                dx::ResourceStates::Common,
+                shared_resource.cross_resource().get_raw(),
+                shared_state,
                 dx::ResourceStates::CopyDest,
             ),
             dx::ResourceBarrier::transition(
-                shared_resource.local_resource(),
-                dx::ResourceStates::Common,
+                shared_resource.local_resource().get_raw(),
+                local_state,
                 dx::ResourceStates::CopySource,
             ),
         ]);
 
         self.list.copy_resource(
-            shared_resource.cross_resource(),
-            shared_resource.local_resource(),
+            shared_resource.cross_resource().get_raw(),
+            shared_resource.local_resource().get_raw(),
         );
     }
 

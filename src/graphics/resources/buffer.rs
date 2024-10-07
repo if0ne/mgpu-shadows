@@ -1,19 +1,22 @@
 use std::fmt::Debug;
 
 use oxidx::dx;
+use parking_lot::Mutex;
 
-use crate::graphics::heaps::{Allocation, HeapType};
+use crate::graphics::heaps::Allocation;
 
 pub trait Buffer {}
 
 #[derive(Debug)]
-pub struct BaseBuffer<H: HeapType> {
+pub struct BaseBuffer {
     pub(super) raw: dx::Resource,
-    pub(super) state: dx::ResourceStates,
-    pub(super) allocation: Option<Allocation<H>>,
+    pub(super) size: usize,
+    pub(super) state: Mutex<dx::ResourceStates>,
+    pub(super) flags: dx::ResourceFlags,
+    pub(super) allocation: Option<Allocation>,
 }
 
-impl<H: HeapType> BaseBuffer<H> {
+impl BaseBuffer {
     pub fn resource(&self) -> &dx::Resource {
         &self.raw
     }

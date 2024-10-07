@@ -1,63 +1,30 @@
 use oxidx::dx::{self, IDevice, ResourceStates};
-use std::{marker::PhantomData, ops::Deref, sync::Arc};
+use std::{ops::Deref, sync::Arc};
 
 use crate::graphics::{device::Device, resources::Resource};
 
-pub trait HeapType: Clone {
-    const RAW_TYPE: dx::HeapType;
-    const RAW_FLAGS: dx::HeapFlags;
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Default;
-impl HeapType for Default {
-    const RAW_TYPE: dx::HeapType = dx::HeapType::Default;
-    const RAW_FLAGS: dx::HeapFlags = dx::HeapFlags::empty();
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Upload;
-impl HeapType for Upload {
-    const RAW_TYPE: dx::HeapType = dx::HeapType::Upload;
-    const RAW_FLAGS: dx::HeapFlags = dx::HeapFlags::empty();
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Readback;
-impl HeapType for Readback {
-    const RAW_TYPE: dx::HeapType = dx::HeapType::Readback;
-    const RAW_FLAGS: dx::HeapFlags = dx::HeapFlags::empty();
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Shared;
-impl HeapType for Shared {
-    const RAW_TYPE: dx::HeapType = dx::HeapType::Default;
-    const RAW_FLAGS: dx::HeapFlags = dx::HeapFlags::Shared.union(dx::HeapFlags::SharedCrossAdapter);
-}
-
 #[derive(Debug)]
-pub struct Allocation<T: HeapType> {
-    pub(super) heap: MemoryHeap<T>,
-    pub(super) offset: usize,
-    pub(super) size: usize,
+pub struct Allocation {
+    pub(in super::super) heap: MemoryHeap,
+    pub(in super::super) offset: usize,
+    pub(in super::super) size: usize,
 }
 
 #[derive(Clone, Debug)]
-pub struct MemoryHeap<T: HeapType>(Arc<MemoryHeapInner<T>>);
+pub struct MemoryHeap(Arc<MemoryHeapInner>);
 
-impl<T: HeapType> MemoryHeap<T> {
-    pub(in super::super) fn inner_new(device: Device, size: usize) -> Self {
+impl MemoryHeap {
+    pub(in super::super) fn inner_new(device: Device, size: usize, mtype: MemoryHeapType) -> Self {
         let desc = dx::HeapDesc::new(
             size,
             dx::HeapProperties::new(
-                T::RAW_TYPE,
+                mtype.into(),
                 dx::CpuPageProperty::Unknown,
                 dx::MemoryPool::Unknown,
             ),
         )
         .with_alignment(dx::HeapAlignment::ResourcePlacement)
-        .with_flags(T::RAW_FLAGS);
+        .with_flags(mtype.flags());
 
         let heap = device.raw.create_heap(&desc).unwrap();
 
@@ -65,7 +32,7 @@ impl<T: HeapType> MemoryHeap<T> {
             device,
             heap: heap,
             size: size,
-            _marker: PhantomData,
+            mtype,
         }))
     }
 
@@ -76,7 +43,7 @@ impl<T: HeapType> MemoryHeap<T> {
         initial_state: ResourceStates,
         optimized_clear_value: Option<&dx::ClearValue>,
     ) -> R {
-        let desc = desc.into();
+        let raw_desc = desc.into();
 
         let resource: dx::Resource = self
             .device
@@ -84,7 +51,7 @@ impl<T: HeapType> MemoryHeap<T> {
             .create_placed_resource(
                 &self.heap,
                 offset,
-                &desc,
+                &raw_desc,
                 initial_state,
                 optimized_clear_value,
             )
@@ -92,6 +59,7 @@ impl<T: HeapType> MemoryHeap<T> {
 
         R::from_raw_placed(
             resource,
+            desc,
             Allocation {
                 heap: self.clone(),
                 offset: offset,
@@ -101,8 +69,10 @@ impl<T: HeapType> MemoryHeap<T> {
     }
 }
 
-impl MemoryHeap<Shared> {
-    pub fn connect(&self, device: Device) -> MemoryHeap<Shared> {
+impl MemoryHeap {
+    pub fn connect(&self, device: Device) -> MemoryHeap {
+        assert!(self.mtype == MemoryHeapType::Shared);
+
         let handle = self
             .device
             .raw
@@ -115,13 +85,13 @@ impl MemoryHeap<Shared> {
             device,
             heap,
             size: self.size,
-            _marker: PhantomData,
+            mtype: MemoryHeapType::Shared,
         }))
     }
 }
 
-impl<T: HeapType> Deref for MemoryHeap<T> {
-    type Target = MemoryHeapInner<T>;
+impl Deref for MemoryHeap {
+    type Target = MemoryHeapInner;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -129,9 +99,37 @@ impl<T: HeapType> Deref for MemoryHeap<T> {
 }
 
 #[derive(Debug)]
-pub struct MemoryHeapInner<T: HeapType> {
+pub struct MemoryHeapInner {
     pub(in super::super) device: Device,
     pub(in super::super) heap: dx::Heap,
-    size: usize,
-    _marker: PhantomData<T>,
+    pub(in super::super) size: usize,
+    pub(in super::super) mtype: MemoryHeapType,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MemoryHeapType {
+    Gpu,
+    Cpu,
+    Readback,
+    Shared,
+}
+
+impl MemoryHeapType {
+    fn flags(&self) -> dx::HeapFlags {
+        match self {
+            MemoryHeapType::Shared => dx::HeapFlags::Shared | dx::HeapFlags::SharedCrossAdapter,
+            _ => dx::HeapFlags::empty(),
+        }
+    }
+}
+
+impl Into<dx::HeapType> for MemoryHeapType {
+    fn into(self) -> dx::HeapType {
+        match self {
+            MemoryHeapType::Gpu => dx::HeapType::Default,
+            MemoryHeapType::Cpu => dx::HeapType::Upload,
+            MemoryHeapType::Readback => dx::HeapType::Readback,
+            MemoryHeapType::Shared => dx::HeapType::Default,
+        }
+    }
 }
