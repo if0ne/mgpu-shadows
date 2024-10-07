@@ -40,6 +40,7 @@ impl MemoryHeap {
         &self,
         desc: R::Desc,
         offset: usize,
+        access: R::Access,
         initial_state: ResourceStates,
         optimized_clear_value: Option<&dx::ClearValue>,
     ) -> R {
@@ -60,6 +61,7 @@ impl MemoryHeap {
         R::from_raw_placed(
             resource,
             desc,
+            access,
             Allocation {
                 heap: self.clone(),
                 offset: offset,

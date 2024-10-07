@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 
 use super::device::Device;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ResourceDescriptor<T: DescriptorHeapType> {
     index: usize,
     gpu: dx::GpuDescriptorHandle,
@@ -444,7 +444,7 @@ pub(super) trait DescriptorHeapType {
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc;
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RtvHeapView;
 impl DescriptorHeapType for RtvHeapView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Rtv;
@@ -454,7 +454,7 @@ impl DescriptorHeapType for RtvHeapView {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DsvHeapView;
 impl DescriptorHeapType for DsvHeapView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Dsv;
@@ -464,7 +464,7 @@ impl DescriptorHeapType for DsvHeapView {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CbvSrvUavHeapView;
 impl DescriptorHeapType for CbvSrvUavHeapView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
@@ -474,7 +474,7 @@ impl DescriptorHeapType for CbvSrvUavHeapView {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CbvView;
 impl DescriptorHeapType for CbvView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
@@ -484,7 +484,7 @@ impl DescriptorHeapType for CbvView {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SrvView;
 impl DescriptorHeapType for SrvView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
@@ -494,7 +494,7 @@ impl DescriptorHeapType for SrvView {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct UavView;
 impl DescriptorHeapType for UavView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
@@ -504,7 +504,7 @@ impl DescriptorHeapType for UavView {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SamplerView;
 impl DescriptorHeapType for SamplerView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Sampler;

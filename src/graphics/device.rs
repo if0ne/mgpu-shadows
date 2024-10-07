@@ -116,10 +116,11 @@ impl Device {
     pub fn create_commited_resource<R: Resource>(
         &self,
         desc: R::Desc,
+        access: R::Access,
         init_state: dx::ResourceStates,
         clear_color: Option<&dx::ClearValue>,
     ) -> R {
-        R::from_desc(&self, desc, init_state, clear_color)
+        R::from_desc(&self, desc, access, init_state, clear_color)
     }
 
     pub fn create_swapchain(

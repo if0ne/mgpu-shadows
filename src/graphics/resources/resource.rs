@@ -1,11 +1,15 @@
 use oxidx::dx;
 
-use crate::graphics::heaps::{Allocation, MemoryHeap};
+use crate::graphics::{
+    descriptor_heap::DescriptorAllocator,
+    heaps::{Allocation, MemoryHeap},
+};
 
 use super::super::device::Device;
 
 pub trait Resource {
     type Desc: ResourceDesc;
+    type Access: Clone;
 
     fn get_raw(&self) -> &dx::Resource;
     fn set_current_state(&self, state: dx::ResourceStates) -> dx::ResourceStates;
@@ -15,16 +19,42 @@ pub trait Resource {
     fn from_desc(
         device: &Device,
         desc: Self::Desc,
+        access: Self::Access,
         init_state: dx::ResourceStates,
         clear_color: Option<&dx::ClearValue>,
     ) -> Self;
-    fn from_raw_placed(raw: dx::Resource, desc: Self::Desc, allocation: Allocation) -> Self;
+
+    fn from_raw_placed(
+        raw: dx::Resource,
+        desc: Self::Desc,
+        access: Self::Access,
+        allocation: Allocation,
+    ) -> Self;
 }
 
 pub trait ResourceDesc: Into<dx::ResourceDesc> + Clone {
     fn flags(&self) -> dx::ResourceFlags;
     fn with_flags(self, flags: dx::ResourceFlags) -> Self;
 }
+
+#[derive(Clone, Debug)]
+pub enum GpuAccess {
+    Address,
+    Descriptor(DescriptorAllocator),
+}
+
+impl PartialEq for GpuAccess {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
+impl Eq for GpuAccess {}
+
+#[derive(Clone, Debug)]
+pub struct GpuOnlyDescriptorAccess(DescriptorAllocator);
 
 #[derive(Clone, Debug)]
 pub struct SharedResource<R: Resource> {
@@ -94,6 +124,7 @@ impl<R: Resource> SharedResource<R> {
         &self,
         other: &MemoryHeap,
         offset: usize,
+        access: R::Access,
         local_state: dx::ResourceStates,
         share_state: dx::ResourceStates,
         clear_color: Option<&dx::ClearValue>,
@@ -110,6 +141,7 @@ impl<R: Resource> SharedResource<R> {
         let cross = other.create_placed_resource(
             self.cross_resource().get_desc().with_flags(flags),
             offset,
+            access.clone(),
             state,
             clear_color,
         );
@@ -121,7 +153,13 @@ impl<R: Resource> SharedResource<R> {
                 desc: self.desc.clone(),
             }
         } else {
-            let local = R::from_desc(&other.device, self.desc.clone(), local_state, clear_color);
+            let local = R::from_desc(
+                &other.device,
+                self.desc.clone(),
+                access,
+                local_state,
+                clear_color,
+            );
 
             Self {
                 owner: other.device.clone(),
