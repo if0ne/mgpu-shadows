@@ -13,7 +13,7 @@ use super::{
     },
     fence::{Fence, LocalFence, SharedFence},
     heaps::{MemoryHeap, MemoryHeapType},
-    resources::Resource,
+    resources::{Resource, SharedResource},
     swapchain::Swapchain,
 };
 
@@ -121,6 +121,39 @@ impl Device {
         clear_color: Option<&dx::ClearValue>,
     ) -> R {
         R::from_desc(&self, desc, access, init_state, clear_color)
+    }
+
+    pub fn create_placed_resource<R: Resource>(
+        &self,
+        heap: &MemoryHeap,
+        desc: R::Desc,
+        offset: usize,
+        access: R::Access,
+        initial_state: dx::ResourceStates,
+        optimized_clear_value: Option<&dx::ClearValue>,
+    ) -> R {
+        heap.create_placed_resource(desc, offset, access, initial_state, optimized_clear_value)
+    }
+
+    pub fn create_shared_resource<R: Resource>(
+        &self,
+        heap: &MemoryHeap,
+        offset: usize,
+        desc: R::Desc,
+        access: R::Access,
+        local_state: dx::ResourceStates,
+        share_state: dx::ResourceStates,
+        clear_color: Option<&dx::ClearValue>,
+    ) -> SharedResource<R> {
+        SharedResource::inner_new(
+            heap,
+            offset,
+            desc,
+            access,
+            local_state,
+            share_state,
+            clear_color,
+        )
     }
 
     pub fn create_swapchain(

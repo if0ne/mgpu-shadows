@@ -1,6 +1,4 @@
-use std::{
-    fmt::Debug, marker::PhantomData, ops::Deref, ptr::NonNull, sync::Arc
-};
+use std::{fmt::Debug, marker::PhantomData, ops::Deref, ptr::NonNull, sync::Arc};
 
 use oxidx::dx::{self, IDevice, IResource};
 use parking_lot::Mutex;
@@ -72,7 +70,7 @@ impl<T: Clone> ConstantBuffer<T> {
             marker: PhantomData,
         }))
     }
-    
+
     fn create_cbvs(
         base_loc: dx::GpuVirtualAddress,
         size: usize,
@@ -232,6 +230,10 @@ impl ResourceDesc for ConstantBufferDesc {
 
     fn with_flags(mut self, flags: dx::ResourceFlags) -> Self {
         self.flags = flags;
+        self
+    }
+
+    fn with_layout(self, _layout: dx::TextureLayout) -> Self {
         self
     }
 }
