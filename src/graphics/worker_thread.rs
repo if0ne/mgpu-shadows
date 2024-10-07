@@ -2,10 +2,11 @@ use super::{
     command_allocator::CommandAllocator,
     command_queue::{Graphics, WorkerType},
     device::Device,
-    resources::{Resource, SharedResource},
+    resources::{Resource, SharedResource, VertexBuffer},
 };
 
 use oxidx::dx::{self, IDevice, IGraphicsCommandList};
+use smallvec::SmallVec;
 
 #[derive(Debug)]
 pub struct WorkerThread<T: WorkerType> {
@@ -37,25 +38,22 @@ impl<T: WorkerType> WorkerThread<T> {
             return;
         }
 
-        let local_state = shared_resource
-            .local_resource()
-            .set_current_state(dx::ResourceStates::CopyDest);
-        let shared_state = shared_resource
-            .cross_resource()
-            .set_current_state(dx::ResourceStates::CopySource);
+        let mut barriers: SmallVec<[dx::ResourceBarrier<'_>; 2]> = Default::default();
 
-        self.list.resource_barrier(&[
-            dx::ResourceBarrier::transition(
-                shared_resource.local_resource().get_raw(),
-                local_state,
-                dx::ResourceStates::CopyDest,
-            ),
-            dx::ResourceBarrier::transition(
-                shared_resource.cross_resource().get_raw(),
-                shared_state,
-                dx::ResourceStates::CopySource,
-            ),
-        ]);
+        if let Some(shared_state) = shared_resource
+            .cross_resource()
+            .get_barrier(dx::ResourceStates::CopySource)
+        {
+            barriers.push(shared_state);
+        }
+        if let Some(local_state) = shared_resource
+            .local_resource()
+            .get_barrier(dx::ResourceStates::CopyDest)
+        {
+            barriers.push(local_state);
+        }
+
+        self.barrier(&barriers);
 
         self.list.copy_resource(
             shared_resource.local_resource().get_raw(),
@@ -68,25 +66,22 @@ impl<T: WorkerType> WorkerThread<T> {
             return;
         }
 
-        let shared_state = shared_resource
-            .cross_resource()
-            .set_current_state(dx::ResourceStates::CopyDest);
-        let local_state = shared_resource
-            .local_resource()
-            .set_current_state(dx::ResourceStates::CopySource);
+        let mut barriers: SmallVec<[dx::ResourceBarrier<'_>; 2]> = Default::default();
 
-        self.list.resource_barrier(&[
-            dx::ResourceBarrier::transition(
-                shared_resource.cross_resource().get_raw(),
-                shared_state,
-                dx::ResourceStates::CopyDest,
-            ),
-            dx::ResourceBarrier::transition(
-                shared_resource.local_resource().get_raw(),
-                local_state,
-                dx::ResourceStates::CopySource,
-            ),
-        ]);
+        if let Some(shared_state) = shared_resource
+            .cross_resource()
+            .get_barrier(dx::ResourceStates::CopyDest)
+        {
+            barriers.push(shared_state);
+        }
+        if let Some(local_state) = shared_resource
+            .local_resource()
+            .get_barrier(dx::ResourceStates::CopySource)
+        {
+            barriers.push(local_state);
+        }
+
+        self.barrier(&barriers);
 
         self.list.copy_resource(
             shared_resource.cross_resource().get_raw(),
@@ -94,8 +89,21 @@ impl<T: WorkerType> WorkerThread<T> {
         );
     }
 
+    // TODO: Batched barrier
     pub fn barrier(&self, barriers: &[dx::ResourceBarrier<'_>]) {
         self.list.resource_barrier(barriers);
+    }
+
+    pub fn upload_to_vertex_buffer<VT: Clone>(&self, dst: &VertexBuffer<VT>, src: &[VT]) {
+        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::CopyDest) {
+            self.barrier(&[barrier]);
+        }
+
+        dst.upload_data(self, src);
+
+        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::GenericRead) {
+            self.barrier(&[barrier]);
+        }
     }
 }
 

@@ -12,8 +12,7 @@ pub trait Resource {
     type Access: Clone;
 
     fn get_raw(&self) -> &dx::Resource;
-    fn set_current_state(&self, state: dx::ResourceStates) -> dx::ResourceStates;
-    fn get_current_state(&self) -> dx::ResourceStates;
+    fn get_barrier(&self, state: dx::ResourceStates) -> Option<dx::ResourceBarrier<'_>>;
     fn get_desc(&self) -> Self::Desc;
 
     fn from_desc(

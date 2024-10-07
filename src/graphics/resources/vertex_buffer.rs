@@ -1,11 +1,13 @@
 use std::{fmt::Debug, marker::PhantomData, ops::Deref, sync::Arc};
 
-use oxidx::dx::{self, IDevice, IResource};
+use oxidx::dx::{self, IDevice, IGraphicsCommandListExt, IResource};
 use parking_lot::Mutex;
 
 use crate::graphics::{
+    command_queue::WorkerType,
     device::Device,
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
+    worker_thread::WorkerThread,
 };
 
 use super::{
@@ -76,6 +78,30 @@ impl<T: Clone> VertexBuffer<T> {
             marker: PhantomData,
         }))
     }
+
+    pub(in super::super) fn upload_data<WT: WorkerType>(
+        &self,
+        worker: &WorkerThread<WT>,
+        src: &[T],
+    ) {
+        if let Some(ref staging_buffer) = self.staging_buffer {
+            let src = [dx::SubresourceData::new(src)];
+
+            worker.list.update_subresources_fixed::<1, _, _>(
+                &self.buffer.raw,
+                staging_buffer.get_raw(),
+                0,
+                0..1,
+                &src,
+            );
+        } else {
+            // TODO: Sync?
+            let mut mapped = self.buffer.raw.map(0, None).unwrap();
+
+            let slice = unsafe { std::slice::from_raw_parts_mut(mapped.as_mut(), self.count) };
+            slice.clone_from_slice(src);
+        }
+    }
 }
 
 impl<T: Clone> VertexBuffer<T> {
@@ -100,17 +126,16 @@ impl<T: Clone> Resource for VertexBuffer<T> {
         &self.buffer.raw
     }
 
-    fn set_current_state(&self, state: dx::ResourceStates) -> dx::ResourceStates {
+    fn get_barrier(&self, state: dx::ResourceStates) -> Option<dx::ResourceBarrier<'_>> {
         let mut guard = self.buffer.state.lock();
         let old = *guard;
-
         *guard = state;
 
-        old
-    }
-
-    fn get_current_state(&self) -> dx::ResourceStates {
-        *self.buffer.state.lock()
+        if old != state {
+            Some(dx::ResourceBarrier::transition(self.get_raw(), old, state))
+        } else {
+            None
+        }
     }
 
     fn get_desc(&self) -> Self::Desc {
@@ -136,12 +161,18 @@ impl<T: Clone> Resource for VertexBuffer<T> {
                 &dx::HeapProperties::default(),
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
-                dx::ResourceStates::Common,
+                dx::ResourceStates::GenericRead,
                 None,
             )
             .unwrap();
 
-        Self::inner_new(device, resource, desc, dx::ResourceStates::Common, None)
+        Self::inner_new(
+            device,
+            resource,
+            desc,
+            dx::ResourceStates::GenericRead,
+            None,
+        )
     }
 
     fn from_raw_placed(

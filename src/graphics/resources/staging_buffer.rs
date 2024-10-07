@@ -83,17 +83,8 @@ impl<T: Clone> Resource for StagingBuffer<T> {
         &self.buffer.raw
     }
 
-    fn set_current_state(&self, state: dx::ResourceStates) -> dx::ResourceStates {
-        let mut guard = self.buffer.state.lock();
-        let old = *guard;
-
-        *guard = state;
-
-        old
-    }
-
-    fn get_current_state(&self) -> dx::ResourceStates {
-        *self.buffer.state.lock()
+    fn get_barrier(&self, _state: dx::ResourceStates) -> Option<dx::ResourceBarrier<'_>> {
+        None
     }
 
     fn get_desc(&self) -> Self::Desc {
