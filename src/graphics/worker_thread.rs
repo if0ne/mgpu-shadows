@@ -2,7 +2,7 @@ use super::{
     command_allocator::CommandAllocator,
     command_queue::{Graphics, WorkerType},
     device::Device,
-    resources::{Resource, SharedResource, VertexBuffer},
+    resources::{IndexBuffer, IndexBufferType, Resource, SharedResource, VertexBuffer},
 };
 
 use oxidx::dx::{self, IDevice, IGraphicsCommandList};
@@ -105,10 +105,38 @@ impl<T: WorkerType> WorkerThread<T> {
             self.barrier(&[barrier]);
         }
     }
+
+    pub fn upload_to_index_buffer<IT: IndexBufferType>(
+        &self,
+        dst: &IndexBuffer<IT>,
+        src: &[IT::Raw],
+    ) {
+        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::CopyDest) {
+            self.barrier(&[barrier]);
+        }
+
+        dst.upload_data(self, src);
+
+        if let Some(barrier) = dst.get_barrier(dx::ResourceStates::GenericRead) {
+            self.barrier(&[barrier]);
+        }
+    }
 }
 
 impl WorkerThread<Graphics> {
     pub fn clear_rt(&self, handle: dx::CpuDescriptorHandle, color: [f32; 4]) {
         self.list.clear_render_target_view(handle, color, &[]);
+    }
+
+    pub fn bind_vertex_buffer(&self, slot: u32, view: dx::VertexBufferView) {
+        self.list.ia_set_vertex_buffers(slot, &[view]);
+    }
+
+    pub fn bind_vertex_buffers(&self, slot: u32, views: &[dx::VertexBufferView]) {
+        self.list.ia_set_vertex_buffers(slot, views);
+    }
+
+    pub fn bind_index_buffer(&self, view: dx::IndexBufferView) {
+        self.list.ia_set_index_buffer(Some(&view));
     }
 }
