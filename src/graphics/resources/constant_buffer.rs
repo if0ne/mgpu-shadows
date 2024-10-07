@@ -1,7 +1,5 @@
 use std::{
-    fmt::Debug,
-    marker::PhantomData,
-    ptr::NonNull,
+    fmt::Debug, marker::PhantomData, ops::Deref, ptr::NonNull, sync::Arc
 };
 
 use oxidx::dx::{self, IDevice, IResource};
@@ -18,8 +16,19 @@ use super::{
     GpuAccess, Resource, ResourceDesc,
 };
 
+#[derive(Clone, Debug)]
+pub struct ConstantBuffer<T: Clone>(Arc<ConstantBufferInner<T>>);
+
+impl<T: Clone> Deref for ConstantBuffer<T> {
+    type Target = ConstantBufferInner<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Debug)]
-pub struct ConstantBuffer<T: Clone> {
+pub struct ConstantBufferInner<T: Clone> {
     buffer: BaseBuffer,
     mapped_data: Mutex<NonNull<T>>,
     size: usize,
@@ -49,7 +58,7 @@ impl<T: Clone> ConstantBuffer<T> {
             ),
         };
 
-        Self {
+        Self(Arc::new(ConstantBufferInner {
             buffer: BaseBuffer {
                 raw: resource,
                 size: desc.size * size_of::<T>(),
@@ -61,9 +70,9 @@ impl<T: Clone> ConstantBuffer<T> {
             size: desc.size,
             access,
             marker: PhantomData,
-        }
+        }))
     }
-
+    
     fn create_cbvs(
         base_loc: dx::GpuVirtualAddress,
         size: usize,
