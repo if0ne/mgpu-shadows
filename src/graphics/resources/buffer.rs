@@ -15,9 +15,3 @@ pub struct BaseBuffer {
     pub(super) flags: dx::ResourceFlags,
     pub(super) allocation: Option<Allocation>,
 }
-
-impl BaseBuffer {
-    pub fn resource(&self) -> &dx::Resource {
-        &self.raw
-    }
-}
