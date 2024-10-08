@@ -12,7 +12,8 @@ use crate::graphics::{
 };
 
 use super::{
-    buffer::BaseBuffer, Buffer, BufferDesc, GpuAccess, Resource, ResourceDesc, ResourceStates,
+    buffer::BaseBuffer, BufferResource, BufferResourceDesc, GpuAccess, Resource, ResourceDesc,
+    ResourceStates,
 };
 
 #[derive(Clone, Debug)]
@@ -205,7 +206,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
     }
 }
 
-impl<T: Clone> Buffer for ConstantBuffer<T> {
+impl<T: Clone> BufferResource for ConstantBuffer<T> {
     fn get_barrier(&self, _state: ResourceStates) -> Option<dx::ResourceBarrier<'_>> {
         None
     }
@@ -233,7 +234,7 @@ impl<T> Into<dx::ResourceDesc> for ConstantBufferDesc<T> {
 }
 
 impl<T: Clone> ResourceDesc for ConstantBufferDesc<T> {}
-impl<T: Clone> BufferDesc for ConstantBufferDesc<T> {}
+impl<T: Clone> BufferResourceDesc for ConstantBufferDesc<T> {}
 
 #[derive(Debug)]
 pub enum ConstantBufferGpuAccess {

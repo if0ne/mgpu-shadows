@@ -3,7 +3,7 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::graphics::{
     device::Device,
-    resources::{Buffer, ResourceStates, Texture, TextureDesc},
+    resources::{BufferResource, ResourceStates, TextureResource, TextureResourceDesc},
 };
 
 #[derive(Debug)]
@@ -39,7 +39,7 @@ impl MemoryHeap {
         }))
     }
 
-    pub(in super::super) fn create_placed_buffer<R: Buffer>(
+    pub(in super::super) fn create_placed_buffer<R: BufferResource>(
         &self,
         desc: R::Desc,
         offset: usize,
@@ -68,7 +68,7 @@ impl MemoryHeap {
         )
     }
 
-    pub(in super::super) fn create_placed_texture<R: Texture>(
+    pub(in super::super) fn create_placed_texture<R: TextureResource>(
         &self,
         desc: R::Desc,
         offset: usize,

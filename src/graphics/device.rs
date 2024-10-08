@@ -14,8 +14,8 @@ use super::{
     fence::{Fence, LocalFence, SharedFence},
     heaps::{MemoryHeap, MemoryHeapType},
     resources::{
-        Buffer, Resource, ResourceStates, ShareableBuffer, ShareableTexture, SharedResource,
-        Texture,
+        BufferResource, Resource, ResourceStates, ShareableBuffer, ShareableTexture,
+        SharedResource, TextureResource,
     },
     swapchain::Swapchain,
 };
@@ -125,7 +125,7 @@ impl Device {
         R::from_desc(&self, desc, access, init_state)
     }
 
-    pub fn create_placed_buffer<R: Buffer>(
+    pub fn create_placed_buffer<R: BufferResource>(
         &self,
         heap: &MemoryHeap,
         desc: R::Desc,
@@ -136,7 +136,7 @@ impl Device {
         heap.create_placed_buffer(desc, offset, access, initial_state)
     }
 
-    pub fn create_placed_texture<R: Texture>(
+    pub fn create_placed_texture<R: TextureResource>(
         &self,
         heap: &MemoryHeap,
         desc: R::Desc,

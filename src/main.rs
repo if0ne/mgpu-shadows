@@ -3,7 +3,7 @@ use std::num::NonZero;
 use mgpu_shadows::graphics::{
     device::Device,
     heaps::MemoryHeapType,
-    resources::{GpuOnlyDescriptorAccess, SharedResource, Texture2D, Texture2DDesc},
+    resources::{GpuOnlyDescriptorAccess, SharedResource, TextureResource, TextureResourceDesc},
     swapchain::Swapchain,
 };
 use oxidx::dx::{
@@ -37,10 +37,10 @@ fn main() {
     let heap2 = heap1.connect(gpu2.clone());
     let desc2 = gpu2.create_descriptor_allocator(8, 8, 8, 8);
 
-    let res1: SharedResource<Texture2D> = gpu1.create_shared_texture(
+    let res1: SharedResource<TextureResource> = gpu1.create_shared_texture(
         &heap1,
         0,
-        Texture2DDesc {
+        TextureResourceDesc {
             width: 1920,
             height: 1080,
             format: Format::R8Unorm,

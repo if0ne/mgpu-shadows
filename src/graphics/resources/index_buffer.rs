@@ -13,7 +13,7 @@ use crate::graphics::{
 use super::{
     buffer::BaseBuffer,
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    Buffer, BufferDesc, NoGpuAccess, Resource, ResourceDesc, ResourceStates,
+    BufferResource, BufferResourceDesc, NoGpuAccess, Resource, ResourceDesc, ResourceStates,
 };
 
 pub trait IndexBufferType: Clone {
@@ -204,7 +204,7 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
     }
 }
 
-impl<T: IndexBufferType> Buffer for IndexBuffer<T> {
+impl<T: IndexBufferType> BufferResource for IndexBuffer<T> {
     fn get_barrier(&self, state: ResourceStates) -> Option<dx::ResourceBarrier<'_>> {
         let old = self
             .buffer
@@ -253,7 +253,7 @@ impl<T: IndexBufferType> Into<dx::ResourceDesc> for IndexBufferDesc<T> {
 }
 
 impl<T: IndexBufferType> ResourceDesc for IndexBufferDesc<T> {}
-impl<T: IndexBufferType> BufferDesc for IndexBufferDesc<T> {}
+impl<T: IndexBufferType> BufferResourceDesc for IndexBufferDesc<T> {}
 
 #[cfg(test)]
 #[allow(unused)]

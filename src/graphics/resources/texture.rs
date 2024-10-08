@@ -15,14 +15,14 @@ use crate::graphics::{
 use super::{
     staging_buffer::{StagingBuffer, StagingBufferDesc},
     GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, SubresourceIndex,
-    Texture, TextureDesc, TextureUsage,
+    TextureResource, TextureResourceDesc, TextureUsage,
 };
 
 #[derive(Clone, Debug)]
-pub struct Texture2D(Arc<Texture2DInner>);
+pub struct Texture(Arc<TextureInner>);
 
-impl Deref for Texture2D {
-    type Target = Texture2DInner;
+impl Deref for Texture {
+    type Target = TextureInner;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -30,9 +30,9 @@ impl Deref for Texture2D {
 }
 
 #[derive(Debug)]
-pub struct Texture2DInner {
+pub struct TextureInner {
     raw: dx::Resource,
-    desc: Texture2DDesc,
+    desc: TextureDesc,
     state: Vec<Atomic<ResourceStates>>,
     allocation: Option<Allocation>,
 
@@ -51,11 +51,11 @@ pub struct Texture2DInner {
     staging_buffer: StagingBuffer<u8>,
 }
 
-impl Texture2D {
+impl Texture {
     pub(in super::super) fn inner_new(
         device: &Device,
         resource: dx::Resource,
-        desc: Texture2DDesc,
+        desc: TextureDesc,
         access: GpuOnlyDescriptorAccess,
         state: ResourceStates,
         allocation: Option<Allocation>,
@@ -75,7 +75,9 @@ impl Texture2D {
             &mut row_sizes,
         );
 
-        let state = (0..(desc.mip_levels * desc.count)).map(|_| Atomic::new(state)).collect();
+        let state = (0..(desc.mip_levels * desc.count))
+            .map(|_| Atomic::new(state))
+            .collect();
 
         let staging_buffer = StagingBuffer::from_desc(
             device,
@@ -84,7 +86,7 @@ impl Texture2D {
             ResourceStates::GenericRead,
         );
 
-        Self(Arc::new(Texture2DInner {
+        Self(Arc::new(TextureInner {
             raw: resource,
             desc,
             state,
@@ -99,7 +101,7 @@ impl Texture2D {
     }
 }
 
-impl Texture2D {
+impl Texture {
     pub fn rtv(&self, desc: Option<&dx::RenderTargetViewDesc>) -> ResourceDescriptor<RtvHeapView> {
         match desc {
             Some(_desc) => todo!(),
@@ -185,7 +187,7 @@ impl Texture2D {
     }
 }
 
-impl Drop for Texture2DInner {
+impl Drop for TextureInner {
     fn drop(&mut self) {
         if let Some(rtv) = *self.rtv.lock() {
             self.access.0.remove_rtv(rtv);
@@ -205,8 +207,8 @@ impl Drop for Texture2DInner {
     }
 }
 
-impl Resource for Texture2D {
-    type Desc = Texture2DDesc;
+impl Resource for Texture {
+    type Desc = TextureDesc;
     type Access = GpuOnlyDescriptorAccess;
 
     fn get_raw(&self) -> &dx::Resource {
@@ -254,7 +256,7 @@ impl Resource for Texture2D {
     }
 }
 
-impl Texture for Texture2D {
+impl TextureResource for Texture {
     fn get_barrier(
         &self,
         state: ResourceStates,
@@ -278,7 +280,7 @@ impl Texture for Texture2D {
 }
 
 #[derive(Clone, Debug)]
-pub struct Texture2DDesc {
+pub struct TextureDesc {
     width: u32,
     height: u32,
     count: u8,
@@ -289,7 +291,7 @@ pub struct Texture2DDesc {
     flags: dx::ResourceFlags,
 }
 
-impl Texture2DDesc {
+impl TextureDesc {
     pub fn new(width: u32, height: u32, format: dx::Format) -> Self {
         Self {
             width,
@@ -331,7 +333,7 @@ impl Texture2DDesc {
     }
 }
 
-impl Into<dx::ResourceDesc> for Texture2DDesc {
+impl Into<dx::ResourceDesc> for TextureDesc {
     fn into(self) -> dx::ResourceDesc {
         dx::ResourceDesc::texture_2d(self.width, self.height)
             .with_array_size(self.count as u16)
@@ -342,8 +344,8 @@ impl Into<dx::ResourceDesc> for Texture2DDesc {
     }
 }
 
-impl ResourceDesc for Texture2DDesc {}
-impl TextureDesc for Texture2DDesc {
+impl ResourceDesc for TextureDesc {}
+impl TextureResourceDesc for TextureDesc {
     fn clear_color(&self) -> Option<dx::ClearValue> {
         match &self.usage {
             TextureUsage::RenderTarget { color } => {
@@ -366,9 +368,9 @@ impl TextureDesc for Texture2DDesc {
 #[cfg(test)]
 #[allow(unused)]
 mod tests {
-    use super::Texture2D;
+    use super::Texture;
 
     const fn is_send_sync<T: Send + Sync>() {}
 
-    const _: () = is_send_sync::<Texture2D>();
+    const _: () = is_send_sync::<Texture>();
 }

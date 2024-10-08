@@ -13,7 +13,7 @@ use crate::graphics::{
 use super::{
     buffer::BaseBuffer,
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    Buffer, BufferDesc, NoGpuAccess, Resource, ResourceDesc, ResourceStates,
+    BufferResource, BufferResourceDesc, NoGpuAccess, Resource, ResourceDesc, ResourceStates,
 };
 
 #[derive(Clone, Debug)]
@@ -178,7 +178,7 @@ impl<T: Clone> Resource for VertexBuffer<T> {
     }
 }
 
-impl<T: Clone> Buffer for VertexBuffer<T> {
+impl<T: Clone> BufferResource for VertexBuffer<T> {
     fn get_barrier(&self, state: ResourceStates) -> Option<dx::ResourceBarrier<'_>> {
         let old = self
             .buffer
@@ -227,7 +227,7 @@ impl<T> Into<dx::ResourceDesc> for VertexBufferDesc<T> {
 }
 
 impl<T: Clone> ResourceDesc for VertexBufferDesc<T> {}
-impl<T: Clone> BufferDesc for VertexBufferDesc<T> {}
+impl<T: Clone> BufferResourceDesc for VertexBufferDesc<T> {}
 
 #[cfg(test)]
 #[allow(unused)]

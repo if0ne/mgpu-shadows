@@ -2,7 +2,7 @@ use oxidx::dx;
 
 use crate::graphics::{
     heaps::{MemoryHeap, MemoryHeapType},
-    resources::{ShareableBufferDesc, ShareableTextureDesc, TextureDesc},
+    resources::{ShareableBufferDesc, ShareableTextureDesc, TextureResourceDesc},
 };
 
 use super::{super::device::Device, Resource, ResourceStates, ShareableBuffer, ShareableTexture};

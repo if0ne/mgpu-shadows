@@ -3,8 +3,8 @@ use super::{
     command_queue::{Graphics, WorkerType},
     device::Device,
     resources::{
-        Buffer, IndexBuffer, IndexBufferType, ResourceStates, SharedResource, Texture, Texture2D,
-        VertexBuffer,
+        BufferResource, IndexBuffer, IndexBufferType, ResourceStates, SharedResource,
+        TextureResource, TextureResource, VertexBuffer,
     },
 };
 
@@ -36,7 +36,7 @@ impl<T: WorkerType> WorkerThread<T> {
         }
     }
 
-    pub fn pull_shared_texture<R: Texture>(&self, shared_resource: &SharedResource<R>) {
+    pub fn pull_shared_texture<R: TextureResource>(&self, shared_resource: &SharedResource<R>) {
         if self.device.is_cross_adapter_texture_supported() {
             return;
         }
@@ -64,7 +64,7 @@ impl<T: WorkerType> WorkerThread<T> {
         );
     }
 
-    pub fn push_shared_texture<R: Texture>(&self, shared_resource: &SharedResource<R>) {
+    pub fn push_shared_texture<R: TextureResource>(&self, shared_resource: &SharedResource<R>) {
         if self.device.is_cross_adapter_texture_supported() {
             return;
         }
@@ -92,7 +92,7 @@ impl<T: WorkerType> WorkerThread<T> {
         );
     }
 
-    pub fn pull_shared_buffer<R: Buffer>(&self, shared_resource: &SharedResource<R>) {
+    pub fn pull_shared_buffer<R: BufferResource>(&self, shared_resource: &SharedResource<R>) {
         if self.device.is_cross_adapter_texture_supported() {
             return;
         }
@@ -120,7 +120,7 @@ impl<T: WorkerType> WorkerThread<T> {
         );
     }
 
-    pub fn push_shared_buffer<R: Buffer>(&self, shared_resource: &SharedResource<R>) {
+    pub fn push_shared_buffer<R: BufferResource>(&self, shared_resource: &SharedResource<R>) {
         if self.device.is_cross_adapter_texture_supported() {
             return;
         }
@@ -181,7 +181,7 @@ impl<T: WorkerType> WorkerThread<T> {
         }
     }
 
-    pub fn upload_to_texture2d(&self, dst: &Texture2D, src: &[u8]) {
+    pub fn upload_to_texture2d(&self, dst: &TextureResource, src: &[u8]) {
         if let Some(barrier) = dst.get_barrier(ResourceStates::CopyDst, 0) {
             self.barrier(&[barrier]);
         }
