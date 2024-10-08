@@ -75,7 +75,7 @@ impl Texture2D {
             &mut row_sizes,
         );
 
-        let state = (0..desc.mip_levels).map(|_| Atomic::new(state)).collect();
+        let state = (0..(desc.mip_levels * desc.count)).map(|_| Atomic::new(state)).collect();
 
         let staging_buffer = StagingBuffer::from_desc(
             device,
