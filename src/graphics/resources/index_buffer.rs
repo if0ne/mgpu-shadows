@@ -1,7 +1,7 @@
 use std::{fmt::Debug, marker::PhantomData, ops::Deref, sync::Arc};
 
+use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IGraphicsCommandListExt, IResource};
-use parking_lot::Mutex;
 
 use crate::graphics::{
     command_queue::WorkerType,
@@ -13,7 +13,7 @@ use crate::graphics::{
 use super::{
     buffer::BaseBuffer,
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    Buffer, BufferDesc, NoGpuAccess, Resource, ResourceDesc,
+    Buffer, BufferDesc, NoGpuAccess, Resource, ResourceDesc, ResourceStates,
 };
 
 pub trait IndexBufferType: Clone {
@@ -67,7 +67,7 @@ impl<T: IndexBufferType> IndexBuffer<T> {
         device: &Device,
         resource: dx::Resource,
         desc: IndexBufferDesc<T>,
-        state: dx::ResourceStates,
+        state: ResourceStates,
         allocation: Option<Allocation>,
     ) -> Self {
         let view = dx::IndexBufferView::new(
@@ -81,7 +81,7 @@ impl<T: IndexBufferType> IndexBuffer<T> {
                 device,
                 StagingBufferDesc::new(desc.count),
                 NoGpuAccess,
-                dx::ResourceStates::GenericRead,
+                ResourceStates::GenericRead,
             ))
         } else {
             None
@@ -91,7 +91,7 @@ impl<T: IndexBufferType> IndexBuffer<T> {
             buffer: BaseBuffer {
                 raw: resource,
                 size: desc.count * size_of::<T>(),
-                state: Mutex::new(state),
+                state: Atomic::new(state),
                 flags: dx::ResourceFlags::empty(),
                 allocation,
             },
@@ -151,12 +151,13 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
 
     fn get_barrier(
         &self,
-        state: dx::ResourceStates,
+        state: ResourceStates,
         _subresource: usize,
     ) -> Option<dx::ResourceBarrier<'_>> {
-        let mut guard = self.buffer.state.lock();
-        let old = *guard;
-        *guard = state;
+        let old = self
+            .buffer
+            .state
+            .swap(state, std::sync::atomic::Ordering::Relaxed);
 
         if old != state {
             Some(dx::ResourceBarrier::transition(
@@ -182,12 +183,12 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
         device: &Device,
         desc: Self::Desc,
         _access: Self::Access,
-        mut init_state: dx::ResourceStates,
+        mut init_state: ResourceStates,
     ) -> Self {
         let element_byte_size = size_of::<T>();
 
         if desc.mtype == MemoryHeapType::Cpu {
-            init_state = dx::ResourceStates::GenericRead;
+            init_state = ResourceStates::GenericRead;
         }
 
         let resource: dx::Resource = device
@@ -196,7 +197,7 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
                 &dx::HeapProperties::default(),
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
-                init_state,
+                init_state.into(),
                 None,
             )
             .unwrap();
@@ -209,7 +210,7 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
         raw: dx::Resource,
         desc: Self::Desc,
         _access: Self::Access,
-        mut state: dx::ResourceStates,
+        mut state: ResourceStates,
         allocation: Allocation,
     ) -> Self {
         assert!(
@@ -218,7 +219,7 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
         );
 
         if allocation.heap.mtype == MemoryHeapType::Cpu {
-            state = dx::ResourceStates::GenericRead;
+            state = ResourceStates::GenericRead;
         }
 
         Self::inner_new(&heap.device, raw, desc, state, Some(allocation))

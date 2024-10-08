@@ -1,5 +1,6 @@
 use std::{fmt::Debug, marker::PhantomData, ops::Deref, ptr::NonNull, sync::Arc};
 
+use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IResource};
 use parking_lot::Mutex;
 
@@ -8,7 +9,9 @@ use crate::graphics::{
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
 };
 
-use super::{buffer::BaseBuffer, Buffer, BufferDesc, NoGpuAccess, Resource, ResourceDesc};
+use super::{
+    buffer::BaseBuffer, Buffer, BufferDesc, NoGpuAccess, Resource, ResourceDesc, ResourceStates,
+};
 
 #[derive(Clone, Debug)]
 pub struct StagingBuffer<T: Clone>(Arc<StagingBufferInner<T>>);
@@ -33,7 +36,7 @@ impl<T: Clone> StagingBuffer<T> {
     pub(in super::super) fn inner_new(
         resource: dx::Resource,
         desc: StagingBufferDesc<T>,
-        state: dx::ResourceStates,
+        state: ResourceStates,
         allocation: Option<Allocation>,
     ) -> Self {
         let mapped_data = resource.map::<T>(0, None).unwrap();
@@ -42,7 +45,7 @@ impl<T: Clone> StagingBuffer<T> {
             buffer: BaseBuffer {
                 raw: resource,
                 size: desc.count * size_of::<T>(),
-                state: Mutex::new(state),
+                state: Atomic::new(state),
                 flags: dx::ResourceFlags::empty(),
                 allocation,
             },
@@ -80,7 +83,7 @@ impl<T: Clone> Resource for StagingBuffer<T> {
 
     fn get_barrier(
         &self,
-        _state: dx::ResourceStates,
+        _state: ResourceStates,
         _subresource: usize,
     ) -> Option<dx::ResourceBarrier<'_>> {
         None
@@ -97,9 +100,9 @@ impl<T: Clone> Resource for StagingBuffer<T> {
         device: &Device,
         desc: Self::Desc,
         _access: Self::Access,
-        init_state: dx::ResourceStates,
+        init_state: ResourceStates,
     ) -> Self {
-        assert_eq!(init_state, dx::ResourceStates::GenericRead);
+        assert_eq!(init_state, ResourceStates::GenericRead);
 
         let element_byte_size = size_of::<T>();
 
@@ -109,7 +112,7 @@ impl<T: Clone> Resource for StagingBuffer<T> {
                 &dx::HeapProperties::upload(),
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
-                init_state,
+                init_state.into(),
                 None,
             )
             .unwrap();
@@ -122,11 +125,11 @@ impl<T: Clone> Resource for StagingBuffer<T> {
         raw: dx::Resource,
         desc: Self::Desc,
         _access: Self::Access,
-        state: dx::ResourceStates,
+        state: ResourceStates,
         allocation: Allocation,
     ) -> Self {
         assert!(allocation.heap.mtype == MemoryHeapType::Cpu);
-        assert!(state == dx::ResourceStates::GenericRead);
+        assert!(state == ResourceStates::GenericRead);
 
         Self::inner_new(raw, desc, state, Some(allocation))
     }

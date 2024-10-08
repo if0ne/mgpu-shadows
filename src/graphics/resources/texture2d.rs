@@ -1,5 +1,6 @@
 use std::{fmt::Debug, ops::Deref, sync::Arc};
 
+use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IGraphicsCommandListExt};
 use parking_lot::Mutex;
 
@@ -13,7 +14,7 @@ use crate::graphics::{
 
 use super::{
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, TextureDesc,
+    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, TextureDesc,
 };
 
 #[derive(Clone, Debug)]
@@ -31,7 +32,7 @@ impl Deref for Texture2D {
 pub struct Texture2DInner {
     raw: dx::Resource,
     desc: Texture2DDesc,
-    state: Vec<Mutex<dx::ResourceStates>>,
+    state: Vec<Atomic<ResourceStates>>,
     allocation: Option<Allocation>,
 
     rtv: Mutex<Option<ResourceDescriptor<RtvHeapView>>>,
@@ -55,7 +56,7 @@ impl Texture2D {
         resource: dx::Resource,
         desc: Texture2DDesc,
         access: GpuOnlyDescriptorAccess,
-        state: dx::ResourceStates,
+        state: ResourceStates,
         allocation: Option<Allocation>,
     ) -> Self {
         let raw_desc = desc.clone().into();
@@ -73,13 +74,13 @@ impl Texture2D {
             &mut row_sizes,
         );
 
-        let state = (0..desc.mip_levels).map(|_| Mutex::new(state)).collect();
+        let state = (0..desc.mip_levels).map(|_| Atomic::new(state)).collect();
 
         let staging_buffer = StagingBuffer::from_desc(
             device,
             StagingBufferDesc::new(total_size as usize),
             NoGpuAccess,
-            dx::ResourceStates::GenericRead,
+            ResourceStates::GenericRead,
         );
 
         Self(Arc::new(Texture2DInner {
@@ -213,12 +214,10 @@ impl Resource for Texture2D {
 
     fn get_barrier(
         &self,
-        state: dx::ResourceStates,
+        state: ResourceStates,
         subresource: usize,
     ) -> Option<dx::ResourceBarrier<'_>> {
-        let mut guard = self.state[subresource].lock();
-        let old = *guard;
-        *guard = state;
+        let old = self.state[subresource].swap(state, std::sync::atomic::Ordering::Relaxed);
 
         if old != state {
             Some(dx::ResourceBarrier::transition(
@@ -240,7 +239,7 @@ impl Resource for Texture2D {
         device: &Device,
         desc: Self::Desc,
         access: Self::Access,
-        init_state: dx::ResourceStates,
+        init_state: ResourceStates,
     ) -> Self {
         let resource: dx::Resource = device
             .raw
@@ -248,7 +247,7 @@ impl Resource for Texture2D {
                 &dx::HeapProperties::default(),
                 dx::HeapFlags::empty(),
                 &desc.clone().into(),
-                init_state,
+                init_state.into(),
                 desc.clear_color(),
             )
             .unwrap();
@@ -261,7 +260,7 @@ impl Resource for Texture2D {
         raw: dx::Resource,
         desc: Self::Desc,
         access: Self::Access,
-        state: dx::ResourceStates,
+        state: ResourceStates,
         allocation: Allocation,
     ) -> Self {
         assert!(

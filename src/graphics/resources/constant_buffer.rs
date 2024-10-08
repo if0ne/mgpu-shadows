@@ -1,5 +1,6 @@
 use std::{fmt::Debug, marker::PhantomData, ops::Deref, ptr::NonNull, sync::Arc};
 
+use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IResource};
 use parking_lot::Mutex;
 
@@ -9,7 +10,9 @@ use crate::graphics::{
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
 };
 
-use super::{buffer::BaseBuffer, Buffer, BufferDesc, GpuAccess, Resource, ResourceDesc};
+use super::{
+    buffer::BaseBuffer, Buffer, BufferDesc, GpuAccess, Resource, ResourceDesc, ResourceStates,
+};
 
 #[derive(Clone, Debug)]
 pub struct ConstantBuffer<T: Clone>(Arc<ConstantBufferInner<T>>);
@@ -36,7 +39,7 @@ impl<T: Clone> ConstantBuffer<T> {
         resource: dx::Resource,
         desc: ConstantBufferDesc<T>,
         access: GpuAccess,
-        state: dx::ResourceStates,
+        state: ResourceStates,
         allocation: Option<Allocation>,
     ) -> Self {
         let mapped_data = resource.map::<T>(0, None).unwrap();
@@ -57,7 +60,7 @@ impl<T: Clone> ConstantBuffer<T> {
             buffer: BaseBuffer {
                 raw: resource,
                 size: desc.count * size_of::<T>(),
-                state: Mutex::new(state),
+                state: Atomic::new(state),
                 flags: dx::ResourceFlags::empty(),
                 allocation,
             },
@@ -148,7 +151,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
 
     fn get_barrier(
         &self,
-        _state: dx::ResourceStates,
+        _state: ResourceStates,
         _subresource: usize,
     ) -> Option<dx::ResourceBarrier<'_>> {
         None
@@ -165,7 +168,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
         device: &Device,
         desc: Self::Desc,
         access: Self::Access,
-        _init_state: dx::ResourceStates,
+        _init_state: ResourceStates,
     ) -> Self {
         const {
             assert!(std::mem::align_of::<T>() == 256);
@@ -183,13 +186,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
             )
             .unwrap();
 
-        Self::inner_new(
-            resource,
-            desc,
-            access,
-            dx::ResourceStates::GenericRead,
-            None,
-        )
+        Self::inner_new(resource, desc, access, ResourceStates::GenericRead, None)
     }
 
     fn from_raw_placed(
@@ -197,7 +194,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
         raw: dx::Resource,
         desc: Self::Desc,
         access: Self::Access,
-        _state: dx::ResourceStates,
+        _state: ResourceStates,
         allocation: Allocation,
     ) -> Self {
         const {
@@ -209,7 +206,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
             raw,
             desc,
             access,
-            dx::ResourceStates::GenericRead,
+            ResourceStates::GenericRead,
             Some(allocation),
         )
     }

@@ -83,6 +83,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
+name = "atomig"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0eaf2a17b11f7923d0abe0e07377c7f0f1255a8267f05c8a9cba8dc039acc821"
+
+[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -551,6 +557,8 @@ dependencies = [
 name = "mgpu-shadows"
 version = "0.1.0"
 dependencies = [
+ "atomig",
+ "bitflags 2.6.0",
  "glam",
  "oxidx",
  "parking_lot",

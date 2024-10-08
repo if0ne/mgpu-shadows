@@ -1,9 +1,9 @@
-use oxidx::dx::{self, IDevice, ResourceStates};
+use oxidx::dx::{self, IDevice};
 use std::{ops::Deref, sync::Arc};
 
 use crate::graphics::{
     device::Device,
-    resources::{Buffer, Texture, TextureDesc},
+    resources::{Buffer, ResourceStates, Texture, TextureDesc},
 };
 
 #[derive(Debug)]
@@ -51,7 +51,7 @@ impl MemoryHeap {
         let resource: dx::Resource = self
             .device
             .raw
-            .create_placed_resource(&self.heap, offset, &raw_desc, initial_state, None)
+            .create_placed_resource(&self.heap, offset, &raw_desc, initial_state.into(), None)
             .unwrap();
 
         R::from_raw_placed(
@@ -84,7 +84,7 @@ impl MemoryHeap {
                 &self.heap,
                 offset,
                 &raw_desc,
-                initial_state,
+                initial_state.into(),
                 desc.clear_color(),
             )
             .unwrap();

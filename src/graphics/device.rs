@@ -13,7 +13,10 @@ use super::{
     },
     fence::{Fence, LocalFence, SharedFence},
     heaps::{MemoryHeap, MemoryHeapType},
-    resources::{Buffer, Resource, ShareableBuffer, ShareableTexture, SharedResource, Texture},
+    resources::{
+        Buffer, Resource, ResourceStates, ShareableBuffer, ShareableTexture, SharedResource,
+        Texture,
+    },
     swapchain::Swapchain,
 };
 
@@ -117,7 +120,7 @@ impl Device {
         &self,
         desc: R::Desc,
         access: R::Access,
-        init_state: dx::ResourceStates,
+        init_state: ResourceStates,
     ) -> R {
         R::from_desc(&self, desc, access, init_state)
     }
@@ -128,7 +131,7 @@ impl Device {
         desc: R::Desc,
         offset: usize,
         access: R::Access,
-        initial_state: dx::ResourceStates,
+        initial_state: ResourceStates,
     ) -> R {
         heap.create_placed_buffer(desc, offset, access, initial_state)
     }
@@ -139,7 +142,7 @@ impl Device {
         desc: R::Desc,
         offset: usize,
         access: R::Access,
-        initial_state: dx::ResourceStates,
+        initial_state: ResourceStates,
     ) -> R {
         heap.create_placed_texture(desc, offset, access, initial_state)
     }
@@ -150,8 +153,8 @@ impl Device {
         offset: usize,
         desc: R::Desc,
         access: R::Access,
-        local_state: dx::ResourceStates,
-        share_state: dx::ResourceStates,
+        local_state: ResourceStates,
+        share_state: ResourceStates,
     ) -> SharedResource<R> {
         SharedResource::inner_new_buffer(heap, offset, desc, access, local_state, share_state)
     }
@@ -162,8 +165,8 @@ impl Device {
         offset: usize,
         desc: R::Desc,
         access: R::Access,
-        local_state: dx::ResourceStates,
-        share_state: dx::ResourceStates,
+        local_state: ResourceStates,
+        share_state: ResourceStates,
     ) -> SharedResource<R> {
         SharedResource::inner_new_texture(heap, offset, desc, access, local_state, share_state)
     }

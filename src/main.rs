@@ -51,7 +51,6 @@ fn main() {
         GpuOnlyDescriptorAccess(desc1.clone()),
         ResourceStates::RenderTarget,
         ResourceStates::CopyDest,
-        None,
     );
 
     let res2 = res1.connect(
@@ -60,7 +59,6 @@ fn main() {
         GpuOnlyDescriptorAccess(desc2.clone()),
         ResourceStates::RenderTarget,
         ResourceStates::CopyDest,
-        None,
     );
 
     dbg!(res1);
