@@ -123,28 +123,6 @@ impl<T: Clone> Resource for VertexBuffer<T> {
         &self.buffer.raw
     }
 
-    fn get_barrier(
-        &self,
-        state: ResourceStates,
-        _subresource: usize,
-    ) -> Option<dx::ResourceBarrier<'_>> {
-        let old = self
-            .buffer
-            .state
-            .swap(state, std::sync::atomic::Ordering::Relaxed);
-
-        if old != state {
-            Some(dx::ResourceBarrier::transition(
-                self.get_raw(),
-                old,
-                state,
-                None,
-            ))
-        } else {
-            None
-        }
-    }
-
     fn get_desc(&self) -> Self::Desc {
         VertexBufferDesc {
             count: self.count,
@@ -200,7 +178,25 @@ impl<T: Clone> Resource for VertexBuffer<T> {
     }
 }
 
-impl<T: Clone> Buffer for VertexBuffer<T> {}
+impl<T: Clone> Buffer for VertexBuffer<T> {
+    fn get_barrier(&self, state: ResourceStates) -> Option<dx::ResourceBarrier<'_>> {
+        let old = self
+            .buffer
+            .state
+            .swap(state, std::sync::atomic::Ordering::Relaxed);
+
+        if old != state {
+            Some(dx::ResourceBarrier::transition(
+                self.get_raw(),
+                old,
+                state,
+                None,
+            ))
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct VertexBufferDesc<T> {

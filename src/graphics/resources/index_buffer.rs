@@ -149,28 +149,6 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
         &self.buffer.raw
     }
 
-    fn get_barrier(
-        &self,
-        state: ResourceStates,
-        _subresource: usize,
-    ) -> Option<dx::ResourceBarrier<'_>> {
-        let old = self
-            .buffer
-            .state
-            .swap(state, std::sync::atomic::Ordering::Relaxed);
-
-        if old != state {
-            Some(dx::ResourceBarrier::transition(
-                self.get_raw(),
-                old,
-                state,
-                None,
-            ))
-        } else {
-            None
-        }
-    }
-
     fn get_desc(&self) -> Self::Desc {
         IndexBufferDesc {
             count: self.count,
@@ -226,7 +204,25 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
     }
 }
 
-impl<T: IndexBufferType> Buffer for IndexBuffer<T> {}
+impl<T: IndexBufferType> Buffer for IndexBuffer<T> {
+    fn get_barrier(&self, state: ResourceStates) -> Option<dx::ResourceBarrier<'_>> {
+        let old = self
+            .buffer
+            .state
+            .swap(state, std::sync::atomic::Ordering::Relaxed);
+
+        if old != state {
+            Some(dx::ResourceBarrier::transition(
+                self.get_raw(),
+                old,
+                state,
+                None,
+            ))
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct IndexBufferDesc<T> {

@@ -5,7 +5,7 @@ use crate::graphics::{
     resources::{ShareableBufferDesc, ShareableTextureDesc, TextureDesc},
 };
 
-use super::{super::device::Device, Resource, ShareableBuffer, ShareableTexture};
+use super::{super::device::Device, Resource, ResourceStates, ShareableBuffer, ShareableTexture};
 
 #[derive(Clone, Debug)]
 pub struct SharedResource<R: Resource> {
@@ -51,8 +51,8 @@ impl<R: ShareableTexture> SharedResource<R> {
         offset: usize,
         desc: R::Desc,
         access: R::Access,
-        local_state: dx::ResourceStates,
-        share_state: dx::ResourceStates,
+        local_state: ResourceStates,
+        share_state: ResourceStates,
     ) -> Self {
         assert!(owner.mtype == MemoryHeapType::Shared);
 
@@ -94,8 +94,8 @@ impl<R: ShareableTexture> SharedResource<R> {
         other: &MemoryHeap,
         offset: usize,
         access: R::Access,
-        local_state: dx::ResourceStates,
-        share_state: dx::ResourceStates,
+        local_state: ResourceStates,
+        share_state: ResourceStates,
     ) -> Self {
         assert!(other.mtype == MemoryHeapType::Shared);
 
@@ -139,8 +139,8 @@ impl<R: ShareableBuffer> SharedResource<R> {
         offset: usize,
         desc: R::Desc,
         access: R::Access,
-        local_state: dx::ResourceStates,
-        share_state: dx::ResourceStates,
+        local_state: ResourceStates,
+        share_state: ResourceStates,
     ) -> Self {
         assert!(owner.mtype == MemoryHeapType::Shared);
 
@@ -179,8 +179,8 @@ impl<R: ShareableBuffer> SharedResource<R> {
         other: &MemoryHeap,
         offset: usize,
         access: R::Access,
-        local_state: dx::ResourceStates,
-        share_state: dx::ResourceStates,
+        local_state: ResourceStates,
+        share_state: ResourceStates,
     ) -> Self {
         assert!(other.mtype == MemoryHeapType::Shared);
 

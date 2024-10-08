@@ -13,11 +13,6 @@ pub(in super::super) trait Resource {
     type Access: Clone;
 
     fn get_raw(&self) -> &dx::Resource;
-    fn get_barrier(
-        &self,
-        state: ResourceStates,
-        subresource: usize,
-    ) -> Option<dx::ResourceBarrier<'_>>;
     fn get_desc(&self) -> Self::Desc;
 
     fn from_desc(
@@ -55,8 +50,16 @@ pub trait ShareableBufferDesc: BufferDesc {
     fn with_flags(self, flags: dx::ResourceFlags) -> Self;
 }
 
-pub trait Buffer: Resource<Desc: BufferDesc> {}
-pub trait Texture: Resource<Desc: TextureDesc> {}
+pub trait Buffer: Resource<Desc: BufferDesc> {
+    fn get_barrier(&self, state: ResourceStates) -> Option<dx::ResourceBarrier<'_>>;
+}
+pub trait Texture: Resource<Desc: TextureDesc> {
+    fn get_barrier(
+        &self,
+        state: ResourceStates,
+        subresource: usize,
+    ) -> Option<dx::ResourceBarrier<'_>>;
+}
 
 pub trait ShareableBuffer: Buffer<Desc: ShareableBufferDesc> {}
 pub trait ShareableTexture: Texture<Desc: ShareableTextureDesc> {}

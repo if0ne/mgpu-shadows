@@ -149,14 +149,6 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
         &self.buffer.raw
     }
 
-    fn get_barrier(
-        &self,
-        _state: ResourceStates,
-        _subresource: usize,
-    ) -> Option<dx::ResourceBarrier<'_>> {
-        None
-    }
-
     fn get_desc(&self) -> Self::Desc {
         ConstantBufferDesc {
             count: self.count,
@@ -212,7 +204,11 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
     }
 }
 
-impl<T: Clone> Buffer for ConstantBuffer<T> {}
+impl<T: Clone> Buffer for ConstantBuffer<T> {
+    fn get_barrier(&self, _state: ResourceStates) -> Option<dx::ResourceBarrier<'_>> {
+        None
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct ConstantBufferDesc<T> {

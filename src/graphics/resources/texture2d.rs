@@ -14,7 +14,8 @@ use crate::graphics::{
 
 use super::{
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, TextureDesc,
+    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, Texture,
+    TextureDesc,
 };
 
 #[derive(Clone, Debug)]
@@ -212,25 +213,6 @@ impl Resource for Texture2D {
         &self.raw
     }
 
-    fn get_barrier(
-        &self,
-        state: ResourceStates,
-        subresource: usize,
-    ) -> Option<dx::ResourceBarrier<'_>> {
-        let old = self.state[subresource].swap(state, std::sync::atomic::Ordering::Relaxed);
-
-        if old != state {
-            Some(dx::ResourceBarrier::transition(
-                self.get_raw(),
-                old,
-                state,
-                Some(subresource as u32),
-            ))
-        } else {
-            None
-        }
-    }
-
     fn get_desc(&self) -> Self::Desc {
         self.desc.clone()
     }
@@ -269,6 +251,27 @@ impl Resource for Texture2D {
         );
 
         Self::inner_new(&heap.device, raw, desc, access, state, Some(allocation))
+    }
+}
+
+impl Texture for Texture2D {
+    fn get_barrier(
+        &self,
+        state: ResourceStates,
+        subresource: usize,
+    ) -> Option<dx::ResourceBarrier<'_>> {
+        let old = self.state[subresource].swap(state, std::sync::atomic::Ordering::Relaxed);
+
+        if old != state {
+            Some(dx::ResourceBarrier::transition(
+                self.get_raw(),
+                old,
+                state,
+                Some(subresource as u32),
+            ))
+        } else {
+            None
+        }
     }
 }
 
