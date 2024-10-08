@@ -65,65 +65,6 @@ impl Device {
     pub(super) fn create_command_allocator<T: WorkerType>(&self) -> CommandAllocator<T> {
         CommandAllocator::inner_new(&self.raw, T::RAW_TYPE)
     }
-
-    pub(super) fn get_buffer_copyable_footprints<T: BufferResourceDesc>(
-        &self,
-        desc: T,
-    ) -> BufferCopyableFootprints {
-        let mut layouts = [Default::default(); 1];
-        let mut num_rows = [Default::default(); 1];
-        let mut row_sizes = [Default::default(); 1];
-
-        let total_size = self.raw.get_copyable_footprints(
-            &desc.into(),
-            0..1,
-            0,
-            &mut layouts,
-            &mut num_rows,
-            &mut row_sizes,
-        );
-
-        BufferCopyableFootprints::new(total_size as usize)
-    }
-
-    pub(super) fn get_texture_copyable_footprints<T: TextureResourceDesc>(
-        &self,
-        desc: T,
-    ) -> TextureCopyableFootprints {
-        let desc: dx::ResourceDesc = desc.into();
-
-        // TODO: Handle VolumeTexture
-        let sub_count = (desc.depth_or_array_size() * desc.mip_levels()) as usize;
-
-        let mut layouts = vec![Default::default(); sub_count];
-        let mut num_rows = vec![Default::default(); sub_count];
-        let mut row_sizes = vec![Default::default(); sub_count];
-
-        let total_size = self.raw.get_copyable_footprints(
-            &desc,
-            0..(sub_count as u32),
-            0,
-            &mut layouts,
-            &mut num_rows,
-            &mut row_sizes,
-        );
-
-        let subresources = (0..sub_count)
-            .map(|i| MipInfo {
-                width: layouts[i].footprint().width(),
-                height: layouts[i].footprint().height(),
-                depth: layouts[i].footprint().depth(),
-                row_size: row_sizes[i] as usize,
-                size: (num_rows[i] as u64 * row_sizes[i]) as usize,
-            })
-            .collect();
-
-        TextureCopyableFootprints::new(
-            total_size as usize,
-            desc.mip_levels() as usize,
-            subresources,
-        )
-    }
 }
 
 impl Device {
@@ -245,5 +186,64 @@ impl Device {
 
     pub fn is_cross_adapter_texture_supported(&self) -> bool {
         self.is_cross_adapter_texture_supported
+    }
+
+    pub fn get_buffer_copyable_footprints<T: BufferResourceDesc>(
+        &self,
+        desc: T,
+    ) -> BufferCopyableFootprints {
+        let mut layouts = [Default::default(); 1];
+        let mut num_rows = [Default::default(); 1];
+        let mut row_sizes = [Default::default(); 1];
+
+        let total_size = self.raw.get_copyable_footprints(
+            &desc.into(),
+            0..1,
+            0,
+            &mut layouts,
+            &mut num_rows,
+            &mut row_sizes,
+        );
+
+        BufferCopyableFootprints::new(total_size as usize)
+    }
+
+    pub fn get_texture_copyable_footprints<T: TextureResourceDesc>(
+        &self,
+        desc: T,
+    ) -> TextureCopyableFootprints {
+        let desc: dx::ResourceDesc = desc.into();
+
+        // TODO: Handle VolumeTexture
+        let sub_count = (desc.depth_or_array_size() * desc.mip_levels()) as usize;
+
+        let mut layouts = vec![Default::default(); sub_count];
+        let mut num_rows = vec![Default::default(); sub_count];
+        let mut row_sizes = vec![Default::default(); sub_count];
+
+        let total_size = self.raw.get_copyable_footprints(
+            &desc,
+            0..(sub_count as u32),
+            0,
+            &mut layouts,
+            &mut num_rows,
+            &mut row_sizes,
+        );
+
+        let subresources = (0..sub_count)
+            .map(|i| MipInfo {
+                width: layouts[i].footprint().width(),
+                height: layouts[i].footprint().height(),
+                depth: layouts[i].footprint().depth(),
+                row_size: row_sizes[i] as usize,
+                size: (num_rows[i] as u64 * row_sizes[i]) as usize,
+            })
+            .collect();
+
+        TextureCopyableFootprints::new(
+            total_size as usize,
+            desc.mip_levels() as usize,
+            subresources,
+        )
     }
 }
