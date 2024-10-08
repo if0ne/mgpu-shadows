@@ -5,8 +5,6 @@ use parking_lot::Mutex;
 
 use crate::graphics::heaps::Allocation;
 
-pub trait Buffer {}
-
 #[derive(Debug)]
 pub struct BaseBuffer {
     pub(super) raw: dx::Resource,

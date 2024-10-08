@@ -11,9 +11,9 @@ use crate::graphics::{
 };
 
 use super::{
-    buffer::{BaseBuffer, Buffer},
+    buffer::BaseBuffer,
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    NoGpuAccess, Resource, ResourceDesc,
+    Buffer, BufferDesc, NoGpuAccess, Resource, ResourceDesc,
 };
 
 pub trait IndexBufferType: Clone {
@@ -62,8 +62,6 @@ pub struct IndexBufferInner<T: IndexBufferType> {
     marker: PhantomData<T>,
 }
 
-impl<T: IndexBufferType> Buffer for IndexBuffer<T> {}
-
 impl<T: IndexBufferType> IndexBuffer<T> {
     pub(in super::super) fn inner_new(
         device: &Device,
@@ -84,7 +82,6 @@ impl<T: IndexBufferType> IndexBuffer<T> {
                 StagingBufferDesc::new(desc.count),
                 NoGpuAccess,
                 dx::ResourceStates::GenericRead,
-                None,
             ))
         } else {
             None
@@ -186,7 +183,6 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
         desc: Self::Desc,
         _access: Self::Access,
         mut init_state: dx::ResourceStates,
-        _clear_color: Option<&dx::ClearValue>,
     ) -> Self {
         let element_byte_size = size_of::<T>();
 
@@ -205,13 +201,7 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
             )
             .unwrap();
 
-        Self::inner_new(
-            device,
-            resource,
-            desc,
-            init_state,
-            None,
-        )
+        Self::inner_new(device, resource, desc, init_state, None)
     }
 
     fn from_raw_placed(
@@ -235,6 +225,8 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
     }
 }
 
+impl<T: IndexBufferType> Buffer for IndexBuffer<T> {}
+
 #[derive(Clone, Debug)]
 pub struct IndexBufferDesc<T> {
     count: usize,
@@ -242,7 +234,7 @@ pub struct IndexBufferDesc<T> {
     _marker: PhantomData<T>,
 }
 
-impl<T> IndexBufferDesc<T> {
+impl<T: IndexBufferType> IndexBufferDesc<T> {
     pub fn new(size: usize) -> Self {
         Self {
             count: size,
@@ -257,22 +249,11 @@ impl<T> IndexBufferDesc<T> {
     }
 }
 
-impl<T> Into<dx::ResourceDesc> for IndexBufferDesc<T> {
+impl<T: IndexBufferType> Into<dx::ResourceDesc> for IndexBufferDesc<T> {
     fn into(self) -> dx::ResourceDesc {
         dx::ResourceDesc::buffer(self.count * size_of::<T>())
     }
 }
 
-impl<T: Clone> ResourceDesc for IndexBufferDesc<T> {
-    fn flags(&self) -> dx::ResourceFlags {
-        dx::ResourceFlags::empty()
-    }
-
-    fn with_flags(self, _flags: dx::ResourceFlags) -> Self {
-        self
-    }
-
-    fn with_layout(self, _layout: dx::TextureLayout) -> Self {
-        self
-    }
-}
+impl<T: IndexBufferType> ResourceDesc for IndexBufferDesc<T> {}
+impl<T: IndexBufferType> BufferDesc for IndexBufferDesc<T> {}

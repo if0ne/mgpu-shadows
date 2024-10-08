@@ -13,7 +13,7 @@ use crate::graphics::{
 
 use super::{
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc,
+    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, TextureDesc,
 };
 
 #[derive(Clone, Debug)]
@@ -80,7 +80,6 @@ impl Texture2D {
             StagingBufferDesc::new(total_size as usize),
             NoGpuAccess,
             dx::ResourceStates::GenericRead,
-            None,
         );
 
         Self(Arc::new(Texture2DInner {
@@ -242,7 +241,6 @@ impl Resource for Texture2D {
         desc: Self::Desc,
         access: Self::Access,
         init_state: dx::ResourceStates,
-        clear_color: Option<&dx::ClearValue>,
     ) -> Self {
         let resource: dx::Resource = device
             .raw
@@ -251,7 +249,7 @@ impl Resource for Texture2D {
                 dx::HeapFlags::empty(),
                 &desc.clone().into(),
                 init_state,
-                clear_color,
+                desc.clear_color(),
             )
             .unwrap();
 
@@ -266,7 +264,10 @@ impl Resource for Texture2D {
         state: dx::ResourceStates,
         allocation: Allocation,
     ) -> Self {
-        assert!(allocation.heap.mtype == MemoryHeapType::Gpu || allocation.heap.mtype == MemoryHeapType::Shared);
+        assert!(
+            allocation.heap.mtype == MemoryHeapType::Gpu
+                || allocation.heap.mtype == MemoryHeapType::Shared
+        );
 
         Self::inner_new(&heap.device, raw, desc, access, state, Some(allocation))
     }
@@ -294,14 +295,10 @@ impl Into<dx::ResourceDesc> for Texture2DDesc {
     }
 }
 
-impl ResourceDesc for Texture2DDesc {
-    fn flags(&self) -> dx::ResourceFlags {
-        self.flags
-    }
-
-    fn with_flags(mut self, flags: dx::ResourceFlags) -> Self {
-        self.flags = flags;
-        self
+impl ResourceDesc for Texture2DDesc {}
+impl TextureDesc for Texture2DDesc {
+    fn clear_color(&self) -> Option<&dx::ClearValue> {
+        todo!()
     }
 
     fn with_layout(mut self, layout: dx::TextureLayout) -> Self {

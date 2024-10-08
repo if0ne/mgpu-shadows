@@ -8,10 +8,7 @@ use crate::graphics::{
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
 };
 
-use super::{
-    buffer::{BaseBuffer, Buffer},
-    NoGpuAccess, Resource, ResourceDesc,
-};
+use super::{buffer::BaseBuffer, Buffer, BufferDesc, NoGpuAccess, Resource, ResourceDesc};
 
 #[derive(Clone, Debug)]
 pub struct StagingBuffer<T: Clone>(Arc<StagingBufferInner<T>>);
@@ -31,8 +28,6 @@ pub struct StagingBufferInner<T: Clone> {
     mapped_data: Mutex<NonNull<T>>,
     marker: PhantomData<T>,
 }
-
-impl<T: Clone> Buffer for StagingBuffer<T> {}
 
 impl<T: Clone> StagingBuffer<T> {
     pub(in super::super) fn inner_new(
@@ -103,7 +98,6 @@ impl<T: Clone> Resource for StagingBuffer<T> {
         desc: Self::Desc,
         _access: Self::Access,
         init_state: dx::ResourceStates,
-        _clear_color: Option<&dx::ClearValue>,
     ) -> Self {
         assert_eq!(init_state, dx::ResourceStates::GenericRead);
 
@@ -138,6 +132,8 @@ impl<T: Clone> Resource for StagingBuffer<T> {
     }
 }
 
+impl<T: Clone> Buffer for StagingBuffer<T> {}
+
 #[derive(Clone, Debug)]
 pub struct StagingBufferDesc<T> {
     count: usize,
@@ -159,16 +155,5 @@ impl<T> Into<dx::ResourceDesc> for StagingBufferDesc<T> {
     }
 }
 
-impl<T: Clone> ResourceDesc for StagingBufferDesc<T> {
-    fn flags(&self) -> dx::ResourceFlags {
-        dx::ResourceFlags::empty()
-    }
-
-    fn with_flags(self, _flags: dx::ResourceFlags) -> Self {
-        self
-    }
-
-    fn with_layout(self, _layout: dx::TextureLayout) -> Self {
-        self
-    }
-}
+impl<T: Clone> ResourceDesc for StagingBufferDesc<T> {}
+impl<T: Clone> BufferDesc for StagingBufferDesc<T> {}

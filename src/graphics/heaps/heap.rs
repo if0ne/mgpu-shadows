@@ -1,7 +1,10 @@
 use oxidx::dx::{self, IDevice, ResourceStates};
 use std::{ops::Deref, sync::Arc};
 
-use crate::graphics::{device::Device, resources::Resource};
+use crate::graphics::{
+    device::Device,
+    resources::{Buffer, Texture, TextureDesc},
+};
 
 #[derive(Debug)]
 pub struct Allocation {
@@ -36,13 +39,41 @@ impl MemoryHeap {
         }))
     }
 
-    pub(in super::super) fn create_placed_resource<R: Resource>(
+    pub(in super::super) fn create_placed_buffer<R: Buffer>(
         &self,
         desc: R::Desc,
         offset: usize,
         access: R::Access,
         initial_state: ResourceStates,
-        optimized_clear_value: Option<&dx::ClearValue>,
+    ) -> R {
+        let raw_desc = desc.clone().into();
+
+        let resource: dx::Resource = self
+            .device
+            .raw
+            .create_placed_resource(&self.heap, offset, &raw_desc, initial_state, None)
+            .unwrap();
+
+        R::from_raw_placed(
+            self,
+            resource,
+            desc,
+            access,
+            initial_state,
+            Allocation {
+                heap: self.clone(),
+                offset: offset,
+                size: self.size,
+            },
+        )
+    }
+
+    pub(in super::super) fn create_placed_texture<R: Texture>(
+        &self,
+        desc: R::Desc,
+        offset: usize,
+        access: R::Access,
+        initial_state: ResourceStates,
     ) -> R {
         let raw_desc = desc.clone().into();
 
@@ -54,7 +85,7 @@ impl MemoryHeap {
                 offset,
                 &raw_desc,
                 initial_state,
-                optimized_clear_value,
+                desc.clear_color(),
             )
             .unwrap();
 

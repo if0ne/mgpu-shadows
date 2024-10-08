@@ -7,7 +7,8 @@ use mgpu_shadows::graphics::{
     swapchain::Swapchain,
 };
 use oxidx::dx::{
-    create_debug, create_factory, Debug, Factory4, FactoryCreationFlags, Format, IDebug, IFactory4, Rect, ResourceFlags, ResourceStates, Viewport
+    create_debug, create_factory, Debug, Factory4, FactoryCreationFlags, Format, IDebug, IFactory4,
+    Rect, ResourceFlags, ResourceStates, Viewport,
 };
 use winit::{
     application::ApplicationHandler,
@@ -36,7 +37,7 @@ fn main() {
     let heap2 = heap1.connect(gpu2.clone());
     let desc2 = gpu2.create_descriptor_allocator(8, 8, 8, 8);
 
-    let res1: SharedResource<Texture2D> = gpu1.create_shared_resource(
+    let res1: SharedResource<Texture2D> = gpu1.create_shared_texture(
         &heap1,
         0,
         Texture2DDesc {

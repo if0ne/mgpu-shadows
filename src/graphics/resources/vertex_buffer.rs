@@ -11,9 +11,9 @@ use crate::graphics::{
 };
 
 use super::{
-    buffer::{BaseBuffer, Buffer},
+    buffer::BaseBuffer,
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    NoGpuAccess, Resource, ResourceDesc,
+    Buffer, BufferDesc, NoGpuAccess, Resource, ResourceDesc,
 };
 
 #[derive(Clone, Debug)]
@@ -36,9 +36,7 @@ pub struct VertexBufferInner<T: Clone> {
     marker: PhantomData<T>,
 }
 
-impl<T: Clone> Buffer for VertexBuffer<T> {}
-
-impl<T: Clone + Copy> VertexBuffer<T> {
+impl<T: Clone> VertexBuffer<T> {
     pub(in super::super) fn inner_new(
         device: &Device,
         resource: dx::Resource,
@@ -58,7 +56,6 @@ impl<T: Clone + Copy> VertexBuffer<T> {
                 StagingBufferDesc::new(desc.count),
                 NoGpuAccess,
                 dx::ResourceStates::GenericRead,
-                None,
             ))
         } else {
             None
@@ -118,7 +115,7 @@ impl<T: Clone> VertexBuffer<T> {
     }
 }
 
-impl<T: Clone + Copy> Resource for VertexBuffer<T> {
+impl<T: Clone> Resource for VertexBuffer<T> {
     type Desc = VertexBufferDesc<T>;
     type Access = NoGpuAccess;
 
@@ -160,7 +157,6 @@ impl<T: Clone + Copy> Resource for VertexBuffer<T> {
         desc: Self::Desc,
         _access: Self::Access,
         mut init_state: dx::ResourceStates,
-        _clear_color: Option<&dx::ClearValue>,
     ) -> Self {
         let element_byte_size = size_of::<T>();
 
@@ -179,13 +175,7 @@ impl<T: Clone + Copy> Resource for VertexBuffer<T> {
             )
             .unwrap();
 
-        Self::inner_new(
-            device,
-            resource,
-            desc,
-            init_state,
-            None,
-        )
+        Self::inner_new(device, resource, desc, init_state, None)
     }
 
     fn from_raw_placed(
@@ -208,6 +198,8 @@ impl<T: Clone + Copy> Resource for VertexBuffer<T> {
         Self::inner_new(&heap.device, raw, desc, state, Some(allocation))
     }
 }
+
+impl<T: Clone> Buffer for VertexBuffer<T> {}
 
 #[derive(Clone, Debug)]
 pub struct VertexBufferDesc<T> {
@@ -237,16 +229,5 @@ impl<T> Into<dx::ResourceDesc> for VertexBufferDesc<T> {
     }
 }
 
-impl<T: Clone> ResourceDesc for VertexBufferDesc<T> {
-    fn flags(&self) -> dx::ResourceFlags {
-        dx::ResourceFlags::empty()
-    }
-
-    fn with_flags(self, _flags: dx::ResourceFlags) -> Self {
-        self
-    }
-
-    fn with_layout(self, _layout: dx::TextureLayout) -> Self {
-        self
-    }
-}
+impl<T: Clone> ResourceDesc for VertexBufferDesc<T> {}
+impl<T: Clone> BufferDesc for VertexBufferDesc<T> {}

@@ -9,10 +9,7 @@ use crate::graphics::{
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
 };
 
-use super::{
-    buffer::{BaseBuffer, Buffer},
-    GpuAccess, Resource, ResourceDesc,
-};
+use super::{buffer::BaseBuffer, Buffer, BufferDesc, GpuAccess, Resource, ResourceDesc};
 
 #[derive(Clone, Debug)]
 pub struct ConstantBuffer<T: Clone>(Arc<ConstantBufferInner<T>>);
@@ -33,8 +30,6 @@ pub struct ConstantBufferInner<T: Clone> {
     access: ConstantBufferGpuAccess,
     marker: PhantomData<T>,
 }
-
-impl<T: Clone> Buffer for ConstantBuffer<T> {}
 
 impl<T: Clone> ConstantBuffer<T> {
     pub(in super::super) fn inner_new(
@@ -171,7 +166,6 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
         desc: Self::Desc,
         access: Self::Access,
         _init_state: dx::ResourceStates,
-        _clear_color: Option<&dx::ClearValue>,
     ) -> Self {
         const {
             assert!(std::mem::align_of::<T>() == 256);
@@ -211,9 +205,17 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
         };
         assert!(allocation.heap.mtype == MemoryHeapType::Cpu);
 
-        Self::inner_new(raw, desc, access, dx::ResourceStates::GenericRead, Some(allocation))
+        Self::inner_new(
+            raw,
+            desc,
+            access,
+            dx::ResourceStates::GenericRead,
+            Some(allocation),
+        )
     }
 }
+
+impl<T: Clone> Buffer for ConstantBuffer<T> {}
 
 #[derive(Clone, Debug)]
 pub struct ConstantBufferDesc<T> {
@@ -236,19 +238,8 @@ impl<T> Into<dx::ResourceDesc> for ConstantBufferDesc<T> {
     }
 }
 
-impl<T: Clone> ResourceDesc for ConstantBufferDesc<T> {
-    fn flags(&self) -> dx::ResourceFlags {
-        dx::ResourceFlags::empty()
-    }
-
-    fn with_flags(self, _flags: dx::ResourceFlags) -> Self {
-        self
-    }
-
-    fn with_layout(self, _layout: dx::TextureLayout) -> Self {
-        self
-    }
-}
+impl<T: Clone> ResourceDesc for ConstantBufferDesc<T> {}
+impl<T: Clone> BufferDesc for ConstantBufferDesc<T> {}
 
 #[derive(Debug)]
 pub enum ConstantBufferGpuAccess {

@@ -24,7 +24,6 @@ pub(in super::super) trait Resource {
         desc: Self::Desc,
         access: Self::Access,
         init_state: dx::ResourceStates,
-        clear_color: Option<&dx::ClearValue>,
     ) -> Self;
 
     fn from_raw_placed(
@@ -37,11 +36,29 @@ pub(in super::super) trait Resource {
     ) -> Self;
 }
 
-pub(in super::super) trait ResourceDesc: Into<dx::ResourceDesc> + Clone {
-    fn flags(&self) -> dx::ResourceFlags;
-    fn with_flags(self, flags: dx::ResourceFlags) -> Self;
+pub(in super::super) trait ResourceDesc: Into<dx::ResourceDesc> + Clone {}
+
+pub trait BufferDesc: ResourceDesc {}
+pub trait TextureDesc: ResourceDesc {
+    fn clear_color(&self) -> Option<&dx::ClearValue>;
     fn with_layout(self, layout: dx::TextureLayout) -> Self;
 }
+
+pub trait ShareableTextureDesc: TextureDesc {
+    fn flags(&self) -> dx::ResourceFlags;
+    fn with_flags(self, flags: dx::ResourceFlags) -> Self;
+}
+
+pub trait ShareableBufferDesc: BufferDesc {
+    fn flags(&self) -> dx::ResourceFlags;
+    fn with_flags(self, flags: dx::ResourceFlags) -> Self;
+}
+
+pub trait Buffer: Resource<Desc: BufferDesc> {}
+pub trait Texture: Resource<Desc: TextureDesc> {}
+
+pub trait ShareableBuffer: Buffer<Desc: ShareableBufferDesc> {}
+pub trait ShareableTexture: Texture<Desc: ShareableTextureDesc> {}
 
 #[derive(Clone, Debug)]
 pub enum GpuAccess {
@@ -64,4 +81,3 @@ pub struct GpuOnlyDescriptorAccess(pub DescriptorAllocator);
 
 #[derive(Clone, Debug)]
 pub struct NoGpuAccess;
-

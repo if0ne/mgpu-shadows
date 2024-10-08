@@ -13,7 +13,7 @@ use super::{
     },
     fence::{Fence, LocalFence, SharedFence},
     heaps::{MemoryHeap, MemoryHeapType},
-    resources::{Resource, SharedResource},
+    resources::{Buffer, Resource, ShareableBuffer, ShareableTexture, SharedResource, Texture},
     swapchain::Swapchain,
 };
 
@@ -118,24 +118,33 @@ impl Device {
         desc: R::Desc,
         access: R::Access,
         init_state: dx::ResourceStates,
-        clear_color: Option<&dx::ClearValue>,
     ) -> R {
-        R::from_desc(&self, desc, access, init_state, clear_color)
+        R::from_desc(&self, desc, access, init_state)
     }
 
-    pub fn create_placed_resource<R: Resource>(
+    pub fn create_placed_buffer<R: Buffer>(
         &self,
         heap: &MemoryHeap,
         desc: R::Desc,
         offset: usize,
         access: R::Access,
         initial_state: dx::ResourceStates,
-        optimized_clear_value: Option<&dx::ClearValue>,
     ) -> R {
-        heap.create_placed_resource(desc, offset, access, initial_state, optimized_clear_value)
+        heap.create_placed_buffer(desc, offset, access, initial_state)
     }
 
-    pub fn create_shared_resource<R: Resource>(
+    pub fn create_placed_texture<R: Texture>(
+        &self,
+        heap: &MemoryHeap,
+        desc: R::Desc,
+        offset: usize,
+        access: R::Access,
+        initial_state: dx::ResourceStates,
+    ) -> R {
+        heap.create_placed_texture(desc, offset, access, initial_state)
+    }
+
+    pub fn create_shared_buffer<R: ShareableBuffer>(
         &self,
         heap: &MemoryHeap,
         offset: usize,
@@ -143,17 +152,20 @@ impl Device {
         access: R::Access,
         local_state: dx::ResourceStates,
         share_state: dx::ResourceStates,
-        clear_color: Option<&dx::ClearValue>,
     ) -> SharedResource<R> {
-        SharedResource::inner_new(
-            heap,
-            offset,
-            desc,
-            access,
-            local_state,
-            share_state,
-            clear_color,
-        )
+        SharedResource::inner_new_buffer(heap, offset, desc, access, local_state, share_state)
+    }
+
+    pub fn create_shared_texture<R: ShareableTexture>(
+        &self,
+        heap: &MemoryHeap,
+        offset: usize,
+        desc: R::Desc,
+        access: R::Access,
+        local_state: dx::ResourceStates,
+        share_state: dx::ResourceStates,
+    ) -> SharedResource<R> {
+        SharedResource::inner_new_texture(heap, offset, desc, access, local_state, share_state)
     }
 
     pub fn create_swapchain(
