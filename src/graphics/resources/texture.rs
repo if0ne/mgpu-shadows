@@ -9,6 +9,7 @@ use crate::graphics::{
     descriptor_heap::{DsvHeapView, ResourceDescriptor, RtvHeapView, SrvView, UavView},
     device::Device,
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
+    utils::TextureCopyableFootprints,
     worker_thread::WorkerThread,
 };
 
@@ -48,6 +49,7 @@ pub struct TextureInner {
     // cached_uav: Mutex<HashMap<UavDesc, ResourceDescriptor<UavView>>>
     access: GpuOnlyDescriptorAccess,
 
+    footprint: TextureCopyableFootprints,
     staging_buffer: StagingBuffer<u8>,
 }
 
@@ -60,20 +62,7 @@ impl Texture {
         state: ResourceStates,
         allocation: Option<Allocation>,
     ) -> Self {
-        let raw_desc = desc.clone().into();
-
-        let mut layouts = [Default::default(); 1];
-        let mut num_rows = [Default::default(); 1];
-        let mut row_sizes = [Default::default(); 1];
-
-        let total_size = device.raw.get_copyable_footprints(
-            &raw_desc,
-            0..1,
-            0,
-            &mut layouts,
-            &mut num_rows,
-            &mut row_sizes,
-        );
+        let footprint = device.get_texture_copyable_footprints(desc.clone());
 
         let state = (0..(desc.mip_levels * desc.count))
             .map(|_| Atomic::new(state))
@@ -81,7 +70,7 @@ impl Texture {
 
         let staging_buffer = StagingBuffer::from_desc(
             device,
-            StagingBufferDesc::new(total_size as usize),
+            StagingBufferDesc::new(footprint.total_size()),
             NoGpuAccess,
             ResourceStates::GenericRead,
         );
@@ -97,6 +86,7 @@ impl Texture {
             uav: Default::default(),
             access,
             staging_buffer,
+            footprint,
         }))
     }
 }

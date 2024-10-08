@@ -4,7 +4,7 @@ use super::{
     device::Device,
     resources::{
         BufferResource, IndexBuffer, IndexBufferType, ResourceStates, SharedResource,
-        TextureResource, TextureResource, VertexBuffer,
+        SubresourceIndex, Texture, TextureResource, VertexBuffer,
     },
 };
 
@@ -43,16 +43,22 @@ impl<T: WorkerType> WorkerThread<T> {
 
         let mut barriers: SmallVec<[dx::ResourceBarrier<'_>; 2]> = Default::default();
 
-        if let Some(shared_state) = shared_resource
-            .cross_resource()
-            .get_barrier(ResourceStates::CopySrc, 0)
-        {
+        if let Some(shared_state) = shared_resource.cross_resource().get_barrier(
+            ResourceStates::CopySrc,
+            SubresourceIndex {
+                array_index: 0,
+                mip_index: 0,
+            },
+        ) {
             barriers.push(shared_state);
         }
-        if let Some(local_state) = shared_resource
-            .local_resource()
-            .get_barrier(ResourceStates::CopyDst, 0)
-        {
+        if let Some(local_state) = shared_resource.local_resource().get_barrier(
+            ResourceStates::CopyDst,
+            SubresourceIndex {
+                array_index: 0,
+                mip_index: 0,
+            },
+        ) {
             barriers.push(local_state);
         }
 
@@ -71,16 +77,22 @@ impl<T: WorkerType> WorkerThread<T> {
 
         let mut barriers: SmallVec<[dx::ResourceBarrier<'_>; 2]> = Default::default();
 
-        if let Some(shared_state) = shared_resource
-            .cross_resource()
-            .get_barrier(ResourceStates::CopyDst, 0)
-        {
+        if let Some(shared_state) = shared_resource.cross_resource().get_barrier(
+            ResourceStates::CopyDst,
+            SubresourceIndex {
+                array_index: 0,
+                mip_index: 0,
+            },
+        ) {
             barriers.push(shared_state);
         }
-        if let Some(local_state) = shared_resource
-            .local_resource()
-            .get_barrier(ResourceStates::CopySrc, 0)
-        {
+        if let Some(local_state) = shared_resource.local_resource().get_barrier(
+            ResourceStates::CopySrc,
+            SubresourceIndex {
+                array_index: 0,
+                mip_index: 0,
+            },
+        ) {
             barriers.push(local_state);
         }
 
@@ -181,15 +193,27 @@ impl<T: WorkerType> WorkerThread<T> {
         }
     }
 
-    pub fn upload_to_texture2d(&self, dst: &TextureResource, src: &[u8]) {
-        if let Some(barrier) = dst.get_barrier(ResourceStates::CopyDst, 0) {
+    pub fn upload_to_texture2d(&self, dst: &Texture, src: &[u8]) {
+        if let Some(barrier) = dst.get_barrier(
+            ResourceStates::CopyDst,
+            SubresourceIndex {
+                array_index: 0,
+                mip_index: 0,
+            },
+        ) {
             self.barrier(&[barrier]);
         }
 
         dst.upload_data(self, src);
 
         // TODO: Return in prev state?
-        if let Some(barrier) = dst.get_barrier(ResourceStates::Common, 0) {
+        if let Some(barrier) = dst.get_barrier(
+            ResourceStates::Common,
+            SubresourceIndex {
+                array_index: 0,
+                mip_index: 0,
+            },
+        ) {
             self.barrier(&[barrier]);
         }
     }
