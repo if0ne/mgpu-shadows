@@ -83,7 +83,7 @@ impl<T: IndexBufferType> IndexBuffer<T> {
                 device,
                 StagingBufferDesc::new(desc.count),
                 NoGpuAccess,
-                dx::ResourceStates::CopySource,
+                dx::ResourceStates::GenericRead,
                 None,
             ))
         } else {
@@ -185,10 +185,14 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
         device: &Device,
         desc: Self::Desc,
         _access: Self::Access,
-        _init_state: dx::ResourceStates,
+        mut init_state: dx::ResourceStates,
         _clear_color: Option<&dx::ClearValue>,
     ) -> Self {
         let element_byte_size = size_of::<T>();
+
+        if desc.mtype == MemoryHeapType::Cpu {
+            init_state = dx::ResourceStates::GenericRead;
+        }
 
         let resource: dx::Resource = device
             .raw
@@ -196,7 +200,7 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
                 &dx::HeapProperties::default(),
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
-                dx::ResourceStates::GenericRead,
+                init_state,
                 None,
             )
             .unwrap();
@@ -205,7 +209,7 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
             device,
             resource,
             desc,
-            dx::ResourceStates::GenericRead,
+            init_state,
             None,
         )
     }
@@ -215,13 +219,17 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
         raw: dx::Resource,
         desc: Self::Desc,
         _access: Self::Access,
-        state: dx::ResourceStates,
+        mut state: dx::ResourceStates,
         allocation: Allocation,
     ) -> Self {
         assert!(
             allocation.heap.mtype == MemoryHeapType::Cpu
                 || allocation.heap.mtype == MemoryHeapType::Gpu
         );
+
+        if allocation.heap.mtype == MemoryHeapType::Cpu {
+            state = dx::ResourceStates::GenericRead;
+        }
 
         Self::inner_new(&heap.device, raw, desc, state, Some(allocation))
     }

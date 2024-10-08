@@ -203,7 +203,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
         raw: dx::Resource,
         desc: Self::Desc,
         access: Self::Access,
-        state: dx::ResourceStates,
+        _state: dx::ResourceStates,
         allocation: Allocation,
     ) -> Self {
         const {
@@ -211,7 +211,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
         };
         assert!(allocation.heap.mtype == MemoryHeapType::Cpu);
 
-        Self::inner_new(raw, desc, access, state, Some(allocation))
+        Self::inner_new(raw, desc, access, dx::ResourceStates::GenericRead, Some(allocation))
     }
 }
 

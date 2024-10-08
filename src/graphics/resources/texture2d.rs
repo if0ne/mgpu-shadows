@@ -79,7 +79,7 @@ impl Texture2D {
             device,
             StagingBufferDesc::new(total_size as usize),
             NoGpuAccess,
-            dx::ResourceStates::CopySource,
+            dx::ResourceStates::GenericRead,
             None,
         );
 

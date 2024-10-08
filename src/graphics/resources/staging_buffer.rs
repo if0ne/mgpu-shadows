@@ -102,9 +102,11 @@ impl<T: Clone> Resource for StagingBuffer<T> {
         device: &Device,
         desc: Self::Desc,
         _access: Self::Access,
-        _init_state: dx::ResourceStates,
+        init_state: dx::ResourceStates,
         _clear_color: Option<&dx::ClearValue>,
     ) -> Self {
+        assert_eq!(init_state, dx::ResourceStates::GenericRead);
+
         let element_byte_size = size_of::<T>();
 
         let resource: dx::Resource = device
@@ -113,12 +115,12 @@ impl<T: Clone> Resource for StagingBuffer<T> {
                 &dx::HeapProperties::upload(),
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
-                dx::ResourceStates::GenericRead,
+                init_state,
                 None,
             )
             .unwrap();
 
-        Self::inner_new(resource, desc, dx::ResourceStates::GenericRead, None)
+        Self::inner_new(resource, desc, init_state, None)
     }
 
     fn from_raw_placed(
