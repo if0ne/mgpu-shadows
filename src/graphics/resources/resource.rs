@@ -123,3 +123,16 @@ impl Atom for ResourceStates {
         ResourceStates::from_bits(src).unwrap()
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TextureUsage {
+    RenderTarget {
+        color: Option<[f32; 4]>,
+    },
+    DepthTarget {
+        color: (f32, u8),
+        srv: bool,
+    },
+    ShaderResource,
+    Storage,
+}

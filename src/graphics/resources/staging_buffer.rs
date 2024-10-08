@@ -1,4 +1,4 @@
-use std::{fmt::Debug, marker::PhantomData, ops::Deref, ptr::NonNull, sync::Arc};
+use std::{fmt::Debug, marker::PhantomData, ops::Deref, sync::Arc};
 
 use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IResource};
@@ -6,7 +6,7 @@ use parking_lot::Mutex;
 
 use crate::graphics::{
     device::Device,
-    heaps::{Allocation, MemoryHeap, MemoryHeapType},
+    heaps::{Allocation, MemoryHeap, MemoryHeapType}, utils::NonNullSend,
 };
 
 use super::{
@@ -28,7 +28,7 @@ impl<T: Clone> Deref for StagingBuffer<T> {
 pub struct StagingBufferInner<T: Clone> {
     buffer: BaseBuffer,
     count: usize,
-    mapped_data: Mutex<NonNull<T>>,
+    mapped_data: Mutex<NonNullSend<T>>,
     marker: PhantomData<T>,
 }
 
@@ -51,7 +51,7 @@ impl<T: Clone> StagingBuffer<T> {
             },
             count: desc.count,
             marker: PhantomData,
-            mapped_data: Mutex::new(mapped_data),
+            mapped_data: Mutex::new(mapped_data.into()),
         }))
     }
 }
@@ -170,3 +170,13 @@ impl<T> Into<dx::ResourceDesc> for StagingBufferDesc<T> {
 
 impl<T: Clone> ResourceDesc for StagingBufferDesc<T> {}
 impl<T: Clone> BufferDesc for StagingBufferDesc<T> {}
+
+#[cfg(test)]
+#[allow(unused)]
+mod tests {
+    use super::StagingBuffer;
+
+    const fn is_send_sync<T: Send + Sync>() {}
+
+    const _: () = is_send_sync::<StagingBuffer<u8>>();
+}

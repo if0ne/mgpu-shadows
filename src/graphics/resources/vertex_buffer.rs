@@ -228,3 +228,13 @@ impl<T> Into<dx::ResourceDesc> for VertexBufferDesc<T> {
 
 impl<T: Clone> ResourceDesc for VertexBufferDesc<T> {}
 impl<T: Clone> BufferDesc for VertexBufferDesc<T> {}
+
+#[cfg(test)]
+#[allow(unused)]
+mod tests {
+    use super::VertexBuffer;
+
+    const fn is_send_sync<T: Send + Sync>() {}
+
+    const _: () = is_send_sync::<VertexBuffer<u8>>();
+}

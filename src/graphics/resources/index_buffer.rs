@@ -254,3 +254,14 @@ impl<T: IndexBufferType> Into<dx::ResourceDesc> for IndexBufferDesc<T> {
 
 impl<T: IndexBufferType> ResourceDesc for IndexBufferDesc<T> {}
 impl<T: IndexBufferType> BufferDesc for IndexBufferDesc<T> {}
+
+#[cfg(test)]
+#[allow(unused)]
+mod tests {
+    use super::{IndexBuffer, U16, U32};
+
+    const fn is_send_sync<T: Send + Sync>() {}
+
+    const _: () = is_send_sync::<IndexBuffer<U16>>();
+    const _: () = is_send_sync::<IndexBuffer<U32>>();
+}

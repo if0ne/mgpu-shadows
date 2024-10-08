@@ -308,3 +308,13 @@ impl TextureDesc for Texture2DDesc {
         self
     }
 }
+
+#[cfg(test)]
+#[allow(unused)]
+mod tests {
+    use super::Texture2D;
+
+    const fn is_send_sync<T: Send + Sync>() {}
+
+    const _: () = is_send_sync::<Texture2D>();
+}

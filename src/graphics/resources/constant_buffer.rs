@@ -1,4 +1,4 @@
-use std::{fmt::Debug, marker::PhantomData, ops::Deref, ptr::NonNull, sync::Arc};
+use std::{fmt::Debug, marker::PhantomData, ops::Deref, sync::Arc};
 
 use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IResource};
@@ -7,7 +7,7 @@ use parking_lot::Mutex;
 use crate::graphics::{
     descriptor_heap::{CbvView, DescriptorAllocator, ResourceDescriptor},
     device::Device,
-    heaps::{Allocation, MemoryHeap, MemoryHeapType},
+    heaps::{Allocation, MemoryHeap, MemoryHeapType}, utils::NonNullSend,
 };
 
 use super::{
@@ -28,7 +28,7 @@ impl<T: Clone> Deref for ConstantBuffer<T> {
 #[derive(Debug)]
 pub struct ConstantBufferInner<T: Clone> {
     buffer: BaseBuffer,
-    mapped_data: Mutex<NonNull<T>>,
+    mapped_data: Mutex<NonNullSend<T>>,
     count: usize,
     access: ConstantBufferGpuAccess,
     marker: PhantomData<T>,
@@ -64,7 +64,7 @@ impl<T: Clone> ConstantBuffer<T> {
                 flags: dx::ResourceFlags::empty(),
                 allocation,
             },
-            mapped_data: Mutex::new(mapped_data),
+            mapped_data: Mutex::new(mapped_data.into()),
             count: desc.count,
             access,
             marker: PhantomData,
@@ -238,4 +238,18 @@ impl<T: Clone> BufferDesc for ConstantBufferDesc<T> {}
 pub enum ConstantBufferGpuAccess {
     Addresses(Vec<dx::GpuVirtualAddress>),
     Descriptors(DescriptorAllocator, Vec<ResourceDescriptor<CbvView>>),
+}
+
+#[cfg(test)]
+#[allow(unused)]
+mod tests {
+    use super::ConstantBuffer;
+
+    #[derive(Clone)]
+    #[repr(align(256))]
+    struct Foo {}
+
+    const fn is_send_sync<T: Send + Sync>() {}
+
+    const _: () = is_send_sync::<ConstantBuffer<Foo>>();
 }

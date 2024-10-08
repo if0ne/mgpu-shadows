@@ -7,3 +7,5 @@ pub mod heaps;
 pub mod resources;
 pub mod swapchain;
 pub mod worker_thread;
+
+mod utils;
