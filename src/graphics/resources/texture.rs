@@ -1,4 +1,8 @@
-use std::{fmt::Debug, ops::Deref, sync::Arc};
+use std::{
+    fmt::Debug,
+    ops::Deref,
+    sync::{Arc, OnceLock},
+};
 
 use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IGraphicsCommandListExt};
@@ -37,10 +41,10 @@ pub struct TextureInner {
     state: Vec<Atomic<ResourceStates>>,
     allocation: Option<Allocation>,
 
-    rtv: Mutex<Option<ResourceDescriptor<RtvHeapView>>>,
-    dsv: Mutex<Option<ResourceDescriptor<DsvHeapView>>>,
-    srv: Mutex<Option<ResourceDescriptor<SrvView>>>,
-    uav: Mutex<Option<ResourceDescriptor<UavView>>>,
+    rtv: OnceLock<ResourceDescriptor<RtvHeapView>>,
+    dsv: OnceLock<ResourceDescriptor<DsvHeapView>>,
+    srv: OnceLock<ResourceDescriptor<SrvView>>,
+    uav: OnceLock<ResourceDescriptor<UavView>>,
 
     // TODO: cached descriptors
     // cached_rtv: Mutex<HashMap<RtvDesc, ResourceDescriptor<RtvHeapView>>>
@@ -96,13 +100,13 @@ impl Texture {
         match desc {
             Some(_desc) => todo!(),
             None => {
-                let mut guard = self.rtv.lock();
-                if let Some(desc) = *guard {
-                    return desc;
+                let desc = self.rtv.get();
+                if let Some(desc) = desc {
+                    return *desc;
                 }
 
                 let handle = self.access.0.push_rtv(&self.raw, None);
-                *guard = Some(handle);
+                self.rtv.set(handle);
 
                 handle
             }
@@ -113,13 +117,13 @@ impl Texture {
         match desc {
             Some(_desc) => todo!(),
             None => {
-                let mut guard = self.dsv.lock();
-                if let Some(desc) = *guard {
-                    return desc;
+                let desc = self.dsv.get();
+                if let Some(desc) = desc {
+                    return *desc;
                 }
 
                 let handle = self.access.0.push_dsv(&self.raw, None);
-                *guard = Some(handle);
+                self.dsv.set(handle);
 
                 handle
             }
@@ -130,13 +134,13 @@ impl Texture {
         match desc {
             Some(_desc) => todo!(),
             None => {
-                let mut guard = self.srv.lock();
-                if let Some(desc) = *guard {
-                    return desc;
+                let desc = self.srv.get();
+                if let Some(desc) = desc {
+                    return *desc;
                 }
 
                 let handle = self.access.0.push_srv(&self.raw, None);
-                *guard = Some(handle);
+                self.srv.set(handle);
 
                 handle
             }
@@ -147,13 +151,13 @@ impl Texture {
         match desc {
             Some(_desc) => todo!(),
             None => {
-                let mut guard = self.uav.lock();
-                if let Some(desc) = *guard {
-                    return desc;
+                let desc = self.uav.get();
+                if let Some(desc) = desc {
+                    return *desc;
                 }
 
                 let handle = self.access.0.push_uav(&self.raw, None, None);
-                *guard = Some(handle);
+                self.uav.set(handle);
 
                 handle
             }
@@ -179,20 +183,20 @@ impl Texture {
 
 impl Drop for TextureInner {
     fn drop(&mut self) {
-        if let Some(rtv) = *self.rtv.lock() {
-            self.access.0.remove_rtv(rtv);
+        if let Some(rtv) = self.rtv.get() {
+            self.access.0.remove_rtv(*rtv);
         }
 
-        if let Some(dsv) = *self.dsv.lock() {
-            self.access.0.remove_dsv(dsv);
+        if let Some(dsv) = self.dsv.get() {
+            self.access.0.remove_dsv(*dsv);
         }
 
-        if let Some(srv) = *self.srv.lock() {
-            self.access.0.remove_srv(srv);
+        if let Some(srv) = self.srv.get() {
+            self.access.0.remove_srv(*srv);
         }
 
-        if let Some(uav) = *self.uav.lock() {
-            self.access.0.remove_uav(uav);
+        if let Some(uav) = self.uav.get() {
+            self.access.0.remove_uav(*uav);
         }
     }
 }
