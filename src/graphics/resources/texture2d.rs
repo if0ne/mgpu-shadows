@@ -14,8 +14,8 @@ use crate::graphics::{
 
 use super::{
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, Texture,
-    TextureDesc,
+    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, SubresourceIndex,
+    Texture, TextureDesc, TextureUsage,
 };
 
 #[derive(Clone, Debug)]
@@ -230,7 +230,7 @@ impl Resource for Texture2D {
                 dx::HeapFlags::empty(),
                 &desc.clone().into(),
                 init_state.into(),
-                desc.clear_color(),
+                desc.clear_color().as_ref(),
             )
             .unwrap();
 
@@ -258,9 +258,11 @@ impl Texture for Texture2D {
     fn get_barrier(
         &self,
         state: ResourceStates,
-        subresource: usize,
+        subresource: SubresourceIndex,
     ) -> Option<dx::ResourceBarrier<'_>> {
-        let old = self.state[subresource].swap(state, std::sync::atomic::Ordering::Relaxed);
+        let index =
+            subresource.mip_index + subresource.array_index * (self.desc.mip_levels as usize);
+        let old = self.state[index].swap(state, std::sync::atomic::Ordering::Relaxed);
 
         if old != state {
             Some(dx::ResourceBarrier::transition(
@@ -277,30 +279,82 @@ impl Texture for Texture2D {
 
 #[derive(Clone, Debug)]
 pub struct Texture2DDesc {
-    pub width: u32,
-    pub height: u32,
-    pub format: dx::Format,
-    pub flags: dx::ResourceFlags,
-    pub layout: dx::TextureLayout,
-    pub mip_levels: u16,
+    width: u32,
+    height: u32,
+    count: u8,
+    mip_levels: u8,
+    format: dx::Format,
+    layout: dx::TextureLayout,
+    usage: TextureUsage,
+    flags: dx::ResourceFlags,
 }
 
-impl Texture2DDesc {}
+impl Texture2DDesc {
+    pub fn new(width: u32, height: u32, format: dx::Format) -> Self {
+        Self {
+            width,
+            height,
+            count: 1,
+            mip_levels: 1,
+            format,
+            layout: dx::TextureLayout::RowMajor,
+            usage: TextureUsage::ShaderResource,
+            flags: dx::ResourceFlags::empty(),
+        }
+    }
+
+    pub fn make_array(mut self, count: u8) -> Self {
+        self.count = count;
+        self
+    }
+
+    pub fn with_usage(mut self, usage: TextureUsage) -> Self {
+        match &usage {
+            TextureUsage::RenderTarget { .. } => {
+                self.flags =
+                    dx::ResourceFlags::AllowRenderTarget | dx::ResourceFlags::AllowUnorderedAccess
+            }
+            TextureUsage::DepthTarget { srv, .. } => {
+                self.flags = dx::ResourceFlags::AllowDepthStencil;
+
+                if !srv {
+                    self.flags |= dx::ResourceFlags::DenyShaderResource
+                }
+            }
+            TextureUsage::Storage => {
+                self.flags = dx::ResourceFlags::AllowUnorderedAccess;
+            }
+            _ => {}
+        }
+        self.usage = usage;
+        self
+    }
+}
 
 impl Into<dx::ResourceDesc> for Texture2DDesc {
     fn into(self) -> dx::ResourceDesc {
         dx::ResourceDesc::texture_2d(self.width, self.height)
+            .with_array_size(self.count as u16)
             .with_format(self.format)
             .with_flags(self.flags)
             .with_layout(self.layout)
-            .with_mip_levels(self.mip_levels)
+            .with_mip_levels(self.mip_levels as u16)
     }
 }
 
 impl ResourceDesc for Texture2DDesc {}
 impl TextureDesc for Texture2DDesc {
-    fn clear_color(&self) -> Option<&dx::ClearValue> {
-        todo!()
+    fn clear_color(&self) -> Option<dx::ClearValue> {
+        match &self.usage {
+            TextureUsage::RenderTarget { color } => {
+                color.map(|v| dx::ClearValue::color(self.format, v))
+            }
+            TextureUsage::DepthTarget { color, .. } => {
+                color.map(|v| dx::ClearValue::depth(self.format, v.0, v.1))
+            }
+            TextureUsage::ShaderResource => None,
+            TextureUsage::Storage => None,
+        }
     }
 
     fn with_layout(mut self, layout: dx::TextureLayout) -> Self {

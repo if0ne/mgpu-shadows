@@ -1,4 +1,7 @@
-use std::{ops::{Deref, DerefMut}, ptr::NonNull};
+use std::{
+    ops::{Deref, DerefMut},
+    ptr::NonNull,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NonNullSend<T>(NonNull<T>);

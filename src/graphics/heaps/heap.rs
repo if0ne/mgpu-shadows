@@ -85,7 +85,7 @@ impl MemoryHeap {
                 offset,
                 &raw_desc,
                 initial_state.into(),
-                desc.clear_color(),
+                desc.clear_color().as_ref(),
             )
             .unwrap();
 

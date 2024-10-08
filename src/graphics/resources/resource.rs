@@ -36,7 +36,7 @@ pub(in super::super) trait ResourceDesc: Into<dx::ResourceDesc> + Clone {}
 
 pub trait BufferDesc: ResourceDesc {}
 pub trait TextureDesc: ResourceDesc {
-    fn clear_color(&self) -> Option<&dx::ClearValue>;
+    fn clear_color(&self) -> Option<dx::ClearValue>;
     fn with_layout(self, layout: dx::TextureLayout) -> Self;
 }
 
@@ -57,7 +57,7 @@ pub trait Texture: Resource<Desc: TextureDesc> {
     fn get_barrier(
         &self,
         state: ResourceStates,
-        subresource: usize,
+        subresource: SubresourceIndex,
     ) -> Option<dx::ResourceBarrier<'_>>;
 }
 
@@ -126,13 +126,14 @@ impl Atom for ResourceStates {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TextureUsage {
-    RenderTarget {
-        color: Option<[f32; 4]>,
-    },
-    DepthTarget {
-        color: (f32, u8),
-        srv: bool,
-    },
+    RenderTarget { color: Option<[f32; 4]> },
+    DepthTarget { color: Option<(f32, u8)>, srv: bool },
     ShaderResource,
     Storage,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SubresourceIndex {
+    pub array_index: usize,
+    pub mip_index: usize,
 }

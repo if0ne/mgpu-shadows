@@ -7,7 +7,8 @@ use parking_lot::Mutex;
 use crate::graphics::{
     descriptor_heap::{CbvView, DescriptorAllocator, ResourceDescriptor},
     device::Device,
-    heaps::{Allocation, MemoryHeap, MemoryHeapType}, utils::NonNullSend,
+    heaps::{Allocation, MemoryHeap, MemoryHeapType},
+    utils::NonNullSend,
 };
 
 use super::{
