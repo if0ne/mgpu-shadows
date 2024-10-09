@@ -1,6 +1,8 @@
 use std::{
+    collections::HashMap,
     fmt::Debug,
-    ops::Deref,
+    marker::PhantomData,
+    ops::{Deref, Range},
     sync::{Arc, OnceLock},
 };
 
@@ -10,7 +12,9 @@ use parking_lot::Mutex;
 
 use crate::graphics::{
     command_queue::WorkerType,
-    descriptor_heap::{DsvHeapView, ResourceDescriptor, RtvHeapView, SrvView, UavView},
+    descriptor_heap::{
+        DescriptorHeapType, DsvHeapView, ResourceDescriptor, RtvHeapView, SrvView, UavView,
+    },
     device::Device,
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
     utils::TextureCopyableFootprints,
@@ -46,11 +50,10 @@ pub struct TextureInner {
     srv: OnceLock<ResourceDescriptor<SrvView>>,
     uav: OnceLock<ResourceDescriptor<UavView>>,
 
-    // TODO: cached descriptors
-    // cached_rtv: Mutex<HashMap<RtvDesc, ResourceDescriptor<RtvHeapView>>>
-    // cached_dsv: Mutex<HashMap<DsvDesc, ResourceDescriptor<DsvHeapView>>>
-    // cached_srv: Mutex<HashMap<SrvDesc, ResourceDescriptor<SrvView>>>
-    // cached_uav: Mutex<HashMap<UavDesc, ResourceDescriptor<UavView>>>
+    cached_rtv: Mutex<HashMap<TextureViewDesc<RtvHeapView>, ResourceDescriptor<RtvHeapView>>>,
+    cached_dsv: Mutex<HashMap<TextureViewDesc<DsvHeapView>, ResourceDescriptor<DsvHeapView>>>,
+    cached_srv: Mutex<HashMap<TextureViewDesc<SrvView>, ResourceDescriptor<SrvView>>>,
+    cached_uav: Mutex<HashMap<TextureViewDesc<UavView>, ResourceDescriptor<UavView>>>,
     access: GpuOnlyDescriptorAccess,
 
     footprint: TextureCopyableFootprints,
@@ -88,6 +91,10 @@ impl Texture {
             dsv: Default::default(),
             srv: Default::default(),
             uav: Default::default(),
+            cached_rtv: Default::default(),
+            cached_dsv: Default::default(),
+            cached_srv: Default::default(),
+            cached_uav: Default::default(),
             access,
             staging_buffer,
             footprint,
@@ -95,10 +102,24 @@ impl Texture {
     }
 }
 
+// TODO: Desc validation
 impl Texture {
-    pub fn rtv(&self, desc: Option<&dx::RenderTargetViewDesc>) -> ResourceDescriptor<RtvHeapView> {
+    pub fn rtv(
+        &self,
+        desc: Option<TextureViewDesc<RtvHeapView>>,
+    ) -> ResourceDescriptor<RtvHeapView> {
         match desc {
-            Some(_desc) => todo!(),
+            Some(mut desc) => {
+                if desc.format.is_none() {
+                    desc.format = Some(self.desc.format);
+                }
+
+                *self
+                    .cached_rtv
+                    .lock()
+                    .entry(desc.clone())
+                    .or_insert_with(|| self.access.0.push_rtv(&self.raw, Some(&desc.into())))
+            }
             None => {
                 let desc = self.rtv.get();
                 if let Some(desc) = desc {
@@ -113,9 +134,22 @@ impl Texture {
         }
     }
 
-    pub fn dsv(&self, desc: Option<&dx::DepthStencilViewDesc>) -> ResourceDescriptor<DsvHeapView> {
+    pub fn dsv(
+        &self,
+        desc: Option<TextureViewDesc<DsvHeapView>>,
+    ) -> ResourceDescriptor<DsvHeapView> {
         match desc {
-            Some(_desc) => todo!(),
+            Some(mut desc) => {
+                if desc.format.is_none() {
+                    desc.format = Some(self.desc.format);
+                }
+
+                *self
+                    .cached_dsv
+                    .lock()
+                    .entry(desc.clone())
+                    .or_insert_with(|| self.access.0.push_dsv(&self.raw, Some(&desc.into())))
+            }
             None => {
                 let desc = self.dsv.get();
                 if let Some(desc) = desc {
@@ -130,9 +164,19 @@ impl Texture {
         }
     }
 
-    pub fn srv(&self, desc: Option<&dx::ShaderResourceViewDesc>) -> ResourceDescriptor<SrvView> {
+    pub fn srv(&self, desc: Option<TextureViewDesc<SrvView>>) -> ResourceDescriptor<SrvView> {
         match desc {
-            Some(_desc) => todo!(),
+            Some(mut desc) => {
+                if desc.format.is_none() {
+                    desc.format = Some(self.desc.format);
+                }
+
+                *self
+                    .cached_srv
+                    .lock()
+                    .entry(desc.clone())
+                    .or_insert_with(|| self.access.0.push_srv(&self.raw, Some(&desc.into())))
+            }
             None => {
                 let desc = self.srv.get();
                 if let Some(desc) = desc {
@@ -147,9 +191,19 @@ impl Texture {
         }
     }
 
-    pub fn uav(&self, desc: Option<&dx::RenderTargetViewDesc>) -> ResourceDescriptor<UavView> {
+    pub fn uav(&self, desc: Option<TextureViewDesc<UavView>>) -> ResourceDescriptor<UavView> {
         match desc {
-            Some(_desc) => todo!(),
+            Some(mut desc) => {
+                if desc.format.is_none() {
+                    desc.format = Some(self.desc.format);
+                }
+
+                *self
+                    .cached_uav
+                    .lock()
+                    .entry(desc.clone())
+                    .or_insert_with(|| self.access.0.push_uav(&self.raw, None, Some(&desc.into())))
+            }
             None => {
                 let desc = self.uav.get();
                 if let Some(desc) = desc {
@@ -356,6 +410,175 @@ impl TextureResourceDesc for TextureDesc {
     fn with_layout(mut self, layout: dx::TextureLayout) -> Self {
         self.layout = layout;
         self
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct TextureViewDesc<T: DescriptorHeapType> {
+    format: Option<dx::Format>,
+    mip_base: u8,
+    mip_slice: u8,
+    array: Option<Range<u8>>,
+    _marker: PhantomData<T>,
+}
+
+impl TextureViewDesc<RtvHeapView> {
+    pub fn rtv() -> Self {
+        Self {
+            format: None,
+            mip_base: 1,
+            mip_slice: 1,
+            array: None,
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn with_mip_base(mut self, mip_base: u8) -> Self {
+        self.mip_base = mip_base;
+        self
+    }
+}
+
+impl TextureViewDesc<DsvHeapView> {
+    pub fn dsv() -> Self {
+        Self {
+            format: None,
+            mip_base: 1,
+            mip_slice: 1,
+            array: None,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl TextureViewDesc<SrvView> {
+    pub fn srv() -> Self {
+        Self {
+            format: None,
+            mip_base: 1,
+            mip_slice: 1,
+            array: None,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl TextureViewDesc<UavView> {
+    pub fn srv() -> Self {
+        Self {
+            format: None,
+            mip_base: 1,
+            mip_slice: 1,
+            array: None,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<T: DescriptorHeapType> TextureViewDesc<T> {
+    pub fn with_format(mut self, format: dx::Format) -> Self {
+        self.format = Some(format);
+        self
+    }
+
+    pub fn with_mip_slice(mut self, mip_slice: u8) -> Self {
+        self.mip_slice = mip_slice;
+        self
+    }
+
+    pub fn with_array(mut self, array: Range<u8>) -> Self {
+        self.array = Some(array);
+        self
+    }
+}
+
+impl From<TextureViewDesc<RtvHeapView>> for dx::RenderTargetViewDesc {
+    fn from(value: TextureViewDesc<RtvHeapView>) -> Self {
+        if let Some(array) = value.array {
+            Self::texture_2d_array(
+                value.format.unwrap_or(dx::Format::Unknown),
+                value.mip_slice as u32,
+                0,
+                Range {
+                    start: array.start as u32,
+                    end: array.end as u32,
+                },
+            )
+        } else {
+            Self::texture_2d(
+                value.format.unwrap_or(dx::Format::Unknown),
+                value.mip_slice as u32,
+                0,
+            )
+        }
+    }
+}
+
+impl From<TextureViewDesc<DsvHeapView>> for dx::DepthStencilViewDesc {
+    fn from(value: TextureViewDesc<DsvHeapView>) -> Self {
+        if let Some(array) = value.array {
+            Self::texture_2d_array(
+                value.format.unwrap_or(dx::Format::Unknown),
+                value.mip_slice as u32,
+                Range {
+                    start: array.start as u32,
+                    end: array.end as u32,
+                },
+            )
+        } else {
+            Self::texture_2d(
+                value.format.unwrap_or(dx::Format::Unknown),
+                value.mip_slice as u32,
+            )
+        }
+    }
+}
+
+impl From<TextureViewDesc<SrvView>> for dx::ShaderResourceViewDesc {
+    fn from(value: TextureViewDesc<SrvView>) -> Self {
+        if let Some(array) = value.array {
+            Self::texture_2d_array(
+                value.format.unwrap_or(dx::Format::Unknown),
+                value.mip_base as u32,
+                value.mip_slice as u32,
+                0.0,
+                0,
+                Range {
+                    start: array.start as u32,
+                    end: array.end as u32,
+                },
+            )
+        } else {
+            Self::texture_2d(
+                value.format.unwrap_or(dx::Format::Unknown),
+                value.mip_base as u32,
+                value.mip_slice as u32,
+                0.0,
+                0,
+            )
+        }
+    }
+}
+
+impl From<TextureViewDesc<UavView>> for dx::UnorderedAccessViewDesc {
+    fn from(value: TextureViewDesc<UavView>) -> Self {
+        if let Some(array) = value.array {
+            Self::texture_2d_array(
+                value.format.unwrap_or(dx::Format::Unknown),
+                value.mip_slice as u32,
+                0,
+                Range {
+                    start: array.start as u32,
+                    end: array.end as u32,
+                },
+            )
+        } else {
+            Self::texture_2d(
+                value.format.unwrap_or(dx::Format::Unknown),
+                0,
+                value.mip_slice as u32,
+            )
+        }
     }
 }
 
