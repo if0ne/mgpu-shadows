@@ -53,12 +53,14 @@ pub struct CommandQueueInner<T: WorkerType, F: Fence> {
     pending_list: Mutex<Vec<WorkerThread<T>>>,
     temp_buffer: Mutex<Vec<Option<dx::GraphicsCommandList>>>,
 
+    frequency: f64,
+
     _marker: PhantomData<T>,
 }
 
 impl<T: WorkerType, F: Fence> CommandQueue<T, F> {
     pub(super) fn inner_new(device: Device, fence: F, desc: &dx::CommandQueueDesc) -> Self {
-        let queue = device.raw.create_command_queue(desc).unwrap();
+        let queue: dx::CommandQueue = device.raw.create_command_queue(desc).unwrap();
 
         let cmd_allocators = (0..3)
             .map(|_| device.create_command_allocator())
@@ -71,6 +73,8 @@ impl<T: WorkerType, F: Fence> CommandQueue<T, F> {
 
         cmd_list[0].close().unwrap();
 
+        let frequency = 1000.0 / queue.get_timestamp_frequency().unwrap() as f64;
+
         Self(Arc::new(CommandQueueInner {
             device,
             raw: Mutex::new(queue),
@@ -81,6 +85,8 @@ impl<T: WorkerType, F: Fence> CommandQueue<T, F> {
 
             pending_list: Default::default(),
             temp_buffer: Default::default(),
+
+            frequency,
 
             _marker: PhantomData,
         }))
@@ -182,6 +188,7 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
             device: self.device.clone(),
             allocator,
             list,
+            frequency: self.frequency,
         }
     }
 }

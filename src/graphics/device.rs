@@ -13,6 +13,7 @@ use super::{
     },
     fence::{Fence, LocalFence, SharedFence},
     heaps::{MemoryHeap, MemoryHeapType},
+    query::{QueryHeap, QueryHeapType},
     resources::{
         BufferResource, BufferResourceDesc, Resource, ResourceStates, ShareableBuffer,
         ShareableTexture, SharedResource, TextureResource, TextureResourceDesc,
@@ -182,6 +183,10 @@ impl Device {
         count: usize,
     ) -> Swapchain {
         Swapchain::inner_new(self.clone(), queue, rtv_heap, dsv_heap, hwnd, desc, count)
+    }
+
+    pub fn create_query_heap<T: QueryHeapType>(&self, count: usize) -> QueryHeap<T> {
+        QueryHeap::inner_new(self, count)
     }
 
     pub fn is_cross_adapter_texture_supported(&self) -> bool {

@@ -1,4 +1,9 @@
-use std::{fmt::Debug, marker::PhantomData, ops::Deref, sync::Arc};
+use std::{
+    fmt::Debug,
+    marker::PhantomData,
+    ops::{Deref, Range},
+    sync::Arc,
+};
 
 use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IResource};
@@ -61,8 +66,7 @@ impl<T: Clone> StagingBuffer<T> {
 }
 
 impl<T: Clone> StagingBuffer<T> {
-    pub fn write_data(&self, src: &[T]) {
-        assert_eq!(src.len(), self.count);
+    pub fn write_data(&self, src: &[T], write_range: Option<Range<usize>>) {
         assert_eq!(
             self.buffer.state.load(std::sync::atomic::Ordering::Relaxed),
             ResourceStates::GenericRead
@@ -71,14 +75,30 @@ impl<T: Clone> StagingBuffer<T> {
         let mut guard = self.mapped_data.lock();
         let slice = unsafe { std::slice::from_raw_parts_mut(guard.as_mut(), self.count) };
 
+        let slice = if let Some(write_range) = write_range {
+            assert_eq!(src.len(), write_range.end - write_range.start);
+            &mut slice[write_range]
+        } else {
+            assert_eq!(src.len(), self.count);
+            slice
+        };
+
         slice.clone_from_slice(src);
     }
 
-    pub fn read_data(&self, dst: &mut [T]) {
+    pub fn read_data(&self, dst: &mut [T], read_range: Option<Range<usize>>) {
         assert_eq!(dst.len(), self.count);
 
         let mut guard = self.mapped_data.lock();
         let src = unsafe { std::slice::from_raw_parts(guard.as_mut(), self.count) };
+
+        let src = if let Some(read_range) = read_range {
+            assert_eq!(dst.len(), read_range.end - read_range.start);
+            &src[read_range]
+        } else {
+            assert_eq!(dst.len(), self.count);
+            src
+        };
 
         dst.clone_from_slice(src);
     }

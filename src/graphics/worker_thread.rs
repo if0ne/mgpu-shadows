@@ -14,6 +14,7 @@ use smallvec::SmallVec;
 #[derive(Debug)]
 pub struct WorkerThread<T: WorkerType> {
     pub(super) device: Device,
+    pub(super) frequency: f64,
     pub(super) allocator: CommandAllocator<T>,
     pub(super) list: dx::GraphicsCommandList,
 }
@@ -23,6 +24,7 @@ impl<T: WorkerType> WorkerThread<T> {
         device: Device,
         allocator: CommandAllocator<T>,
         r#type: dx::CommandListType,
+        frequency: f64,
     ) -> Self {
         let list = device
             .raw
@@ -33,6 +35,7 @@ impl<T: WorkerType> WorkerThread<T> {
             device,
             list,
             allocator,
+            frequency,
         }
     }
 
