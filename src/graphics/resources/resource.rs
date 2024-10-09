@@ -83,6 +83,12 @@ impl Eq for GpuAccess {}
 #[derive(Clone, Debug)]
 pub struct GpuOnlyDescriptorAccess(pub DescriptorAllocator);
 
+impl From<DescriptorAllocator> for GpuOnlyDescriptorAccess {
+    fn from(value: DescriptorAllocator) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct NoGpuAccess;
 

@@ -1,87 +1,158 @@
-use std::num::NonZero;
+use std::{cell::Cell, num::NonZero};
 
-use oxidx::dx::{self, IDevice, IFactory4, ISwapchain1, ISwapchain3, OUTPUT_NONE};
+use oxidx::dx::{self, IFactory4, ISwapchain1, ISwapchain3, OUTPUT_NONE};
 
 use super::{
     command_queue::{CommandQueue, Graphics},
-    descriptor_heap::{DescriptorHeap, DsvHeapView, ResourceDescriptor, RtvHeapView},
+    descriptor_heap::{DescriptorAllocator, DsvHeapView, ResourceDescriptor, RtvHeapView, SrvView},
     device::Device,
     fence::{Fence, LocalFence},
+    resources::{ResourceStates, Texture, TextureDesc, TextureUsage},
 };
 
 #[derive(Debug)]
 pub struct Swapchain {
-    images: Vec<dx::Resource>,
-    handles: Vec<ResourceDescriptor<RtvHeapView>>,
-    depth: dx::Resource,
-    depth_handle: ResourceDescriptor<DsvHeapView>,
-    fence_values: Vec<u64>,
-    queue: CommandQueue<Graphics, LocalFence>,
-    device: Device,
-    current_back_buffer: usize,
     raw: dx::Swapchain3,
+    device: Device,
+    queue: CommandQueue<Graphics, LocalFence>,
+    descriptor_allocator: DescriptorAllocator,
+
+    images: Vec<SwapchainImage>,
+    depth: Texture,
+    desc: SwapchainDesc,
+
+    current_back_buffer: usize,
 }
 
 impl Swapchain {
     pub(super) fn inner_new(
         device: Device,
         queue: CommandQueue<Graphics, LocalFence>,
-        rtv_heap: &mut DescriptorHeap<RtvHeapView>,
-        dsv_heap: &mut DescriptorHeap<DsvHeapView>,
+        descriptor_allocator: DescriptorAllocator,
         hwnd: NonZero<isize>,
-        desc: dx::SwapchainDesc1,
-        count: usize,
+        desc: SwapchainDesc,
     ) -> Self {
         let raw = device
             .factory
-            .create_swapchain_for_hwnd(&*queue.raw.lock(), hwnd, &desc, None, OUTPUT_NONE)
-            .unwrap();
-
-        let images: Vec<dx::Resource> = (0..count).map(|i| raw.get_buffer(i).unwrap()).collect();
-        let fence_values = vec![0; count];
-        let handles = images.iter().map(|i| rtv_heap.push(i, None)).collect();
-
-        let depth: dx::Resource = device
-            .raw
-            .create_committed_resource(
-                &dx::HeapProperties::default(),
-                dx::HeapFlags::empty(),
-                &dx::ResourceDesc::texture_2d(800, 600)
-                    .with_format(dx::Format::D24UnormS8Uint)
-                    .with_layout(dx::TextureLayout::Unknown)
-                    .with_mip_levels(1)
-                    .with_flags(dx::ResourceFlags::AllowDepthStencil),
-                dx::ResourceStates::Common,
-                Some(&dx::ClearValue::depth(dx::Format::D24UnormS8Uint, 1.0, 0)),
+            .create_swapchain_for_hwnd(
+                &*queue.raw.lock(),
+                hwnd,
+                &desc.clone().into(),
+                None,
+                OUTPUT_NONE,
             )
             .unwrap();
 
-        let depth_handle = dsv_heap.push(&depth, None);
+        let images = (0..desc.buffer_count)
+            .map(|i| {
+                let raw = raw.get_buffer(i).unwrap();
+                SwapchainImage {
+                    rtv: descriptor_allocator.push_rtv(&raw, None),
+                    raw,
+                    srv: Default::default(),
+                    last_access: 0,
+                }
+            })
+            .collect();
+
+        let depth: Texture = device.create_commited_resource(
+            TextureDesc::new(desc.width, desc.height, dx::Format::D24UnormS8Uint).with_usage(
+                TextureUsage::DepthTarget {
+                    color: Some((1.0, 0)),
+                    srv: true,
+                },
+            ),
+            descriptor_allocator.clone().into(),
+            ResourceStates::DepthWrite,
+        );
 
         Self {
-            images,
-            handles,
-            fence_values,
-            queue,
-            device,
-            current_back_buffer: 0,
             raw: raw.try_into().unwrap(),
+            device,
+            queue,
+            descriptor_allocator,
+            images,
             depth,
-            depth_handle,
+            desc,
+            current_back_buffer: 0,
         }
     }
 }
 
 impl Swapchain {
-    pub fn get_texture(&self) -> ResourceDescriptor<RtvHeapView> {
-        self.handles[self.current_back_buffer]
+    pub fn get_rtv(&self) -> ResourceDescriptor<RtvHeapView> {
+        self.images[self.current_back_buffer].rtv
+    }
+
+    pub fn get_rendet_target_as_srv(&self, index: usize) -> ResourceDescriptor<SrvView> {
+        if let Some(srv) = self.images[index].srv.get() {
+            srv
+        } else {
+            let handle = self
+                .descriptor_allocator
+                .push_srv(&self.images[index].raw, None);
+            self.images[index].srv.set(Some(handle));
+            handle
+        }
+    }
+
+    pub fn get_dsv(&self) -> ResourceDescriptor<DsvHeapView> {
+        self.depth.dsv(None)
+    }
+
+    pub fn get_depth_as_srv(&self) -> ResourceDescriptor<SrvView> {
+        self.depth.srv(None)
     }
 
     pub fn present(&mut self) {
-        self.raw.present(0, dx::PresentFlags::empty()).unwrap();
-        self.fence_values[self.current_back_buffer] = self.queue.fence.get_current_value();
+        let (interval, flags) = match self.desc.present_mode {
+            PresentMode::Immediate => (0, dx::PresentFlags::AllowTearing),
+            PresentMode::Mailbox => (0, dx::PresentFlags::empty()),
+            PresentMode::Fifo => (1, dx::PresentFlags::empty()),
+        };
+
+        self.raw.present(interval, flags).unwrap();
+        self.images[self.current_back_buffer].last_access = self.queue.fence.get_current_value();
         self.current_back_buffer = self.raw.get_current_back_buffer_index() as usize;
         self.queue
-            .wait_on_cpu(self.fence_values[self.current_back_buffer]);
+            .wait_on_cpu(self.images[self.current_back_buffer].last_access);
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct SwapchainDesc {
+    pub width: u32,
+    pub height: u32,
+    pub format: dx::Format,
+    pub buffer_count: usize,
+    pub present_mode: PresentMode,
+}
+
+#[derive(Clone, Debug)]
+pub enum PresentMode {
+    Immediate,
+    Mailbox,
+    Fifo,
+}
+
+impl From<SwapchainDesc> for dx::SwapchainDesc1 {
+    fn from(value: SwapchainDesc) -> Self {
+        Self::new(value.width, value.height)
+            .with_format(value.format)
+            .with_buffer_count(value.buffer_count)
+            .with_usage(dx::FrameBufferUsage::RenderTargetOutput)
+            .with_scaling(dx::Scaling::Stretch)
+            .with_swap_effect(dx::SwapEffect::FlipDiscard)
+            .with_flags(
+                dx::SwapchainFlags::AllowTearing | dx::SwapchainFlags::FrameLatencyWaitableObject,
+            )
+    }
+}
+
+#[derive(Debug)]
+pub struct SwapchainImage {
+    raw: dx::Resource,
+    rtv: ResourceDescriptor<RtvHeapView>,
+    srv: Cell<Option<ResourceDescriptor<SrvView>>>,
+    last_access: u64,
 }
