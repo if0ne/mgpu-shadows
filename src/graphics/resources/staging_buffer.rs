@@ -30,6 +30,7 @@ impl<T: Clone> Deref for StagingBuffer<T> {
 pub struct StagingBufferInner<T: Clone> {
     buffer: BaseBuffer,
     count: usize,
+    readback: bool,
     mapped_data: Mutex<NonNullSend<T>>,
     marker: PhantomData<T>,
 }
@@ -52,6 +53,7 @@ impl<T: Clone> StagingBuffer<T> {
                 allocation,
             },
             count: desc.count,
+            readback: desc.readback,
             marker: PhantomData,
             mapped_data: Mutex::new(mapped_data.into()),
         }))
@@ -99,6 +101,7 @@ impl<T: Clone> Resource for StagingBuffer<T> {
     fn get_desc(&self) -> Self::Desc {
         StagingBufferDesc {
             count: self.count,
+            readback: self.readback,
             _marker: PhantomData,
         }
     }
