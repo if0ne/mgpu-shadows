@@ -319,7 +319,7 @@ impl TextureResource for Texture {
                 self.get_raw(),
                 old,
                 state,
-                Some(subresource as u32),
+                Some(index),
             ))
         } else {
             None

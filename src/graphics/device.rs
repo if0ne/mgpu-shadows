@@ -18,7 +18,7 @@ use super::{
         BufferResource, BufferResourceDesc, Resource, ResourceStates, ShareableBuffer,
         ShareableTexture, SharedResource, TextureResource, TextureResourceDesc,
     },
-    swapchain::Swapchain,
+    swapchain::{Swapchain, SwapchainDesc},
     utils::{BufferCopyableFootprints, MipInfo, TextureCopyableFootprints},
 };
 
@@ -176,13 +176,11 @@ impl Device {
     pub fn create_swapchain(
         &self,
         queue: CommandQueue<Graphics, LocalFence>,
-        rtv_heap: &mut DescriptorHeap<RtvHeapView>,
-        dsv_heap: &mut DescriptorHeap<DsvHeapView>,
+        descriptor_allocator: DescriptorAllocator,
         hwnd: NonZero<isize>,
-        desc: dx::SwapchainDesc1,
-        count: usize,
+        desc: SwapchainDesc,
     ) -> Swapchain {
-        Swapchain::inner_new(self.clone(), queue, rtv_heap, dsv_heap, hwnd, desc, count)
+        Swapchain::inner_new(self.clone(), queue, descriptor_allocator, hwnd, desc)
     }
 
     pub fn create_query_heap<T: QueryHeapType>(&self, count: usize) -> QueryHeap<T> {
@@ -241,7 +239,7 @@ impl Device {
                 height: layouts[i].footprint().height(),
                 depth: layouts[i].footprint().depth(),
                 row_size: row_sizes[i] as usize,
-                size: (num_rows[i] as u64 * row_sizes[i]) as usize,
+                size: (num_rows[i] as usize * row_sizes[i]) as usize,
             })
             .collect();
 
