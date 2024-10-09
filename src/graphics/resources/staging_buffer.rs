@@ -61,11 +61,24 @@ impl<T: Clone> StagingBuffer<T> {
 impl<T: Clone> StagingBuffer<T> {
     pub fn write_data(&self, src: &[T]) {
         assert_eq!(src.len(), self.count);
+        assert_eq!(
+            self.buffer.state.load(std::sync::atomic::Ordering::Relaxed),
+            ResourceStates::GenericRead
+        );
 
         let mut guard = self.mapped_data.lock();
         let slice = unsafe { std::slice::from_raw_parts_mut(guard.as_mut(), self.count) };
 
         slice.clone_from_slice(src);
+    }
+
+    pub fn read_data(&self, dst: &mut [T]) {
+        assert_eq!(dst.len(), self.count);
+
+        let mut guard = self.mapped_data.lock();
+        let src = unsafe { std::slice::from_raw_parts(guard.as_mut(), self.count) };
+
+        dst.clone_from_slice(src);
     }
 }
 
@@ -96,14 +109,20 @@ impl<T: Clone> Resource for StagingBuffer<T> {
         _access: Self::Access,
         init_state: ResourceStates,
     ) -> Self {
-        assert_eq!(init_state, ResourceStates::GenericRead);
-
         let element_byte_size = size_of::<T>();
+
+        let heap_props = if desc.readback {
+            assert_eq!(init_state, ResourceStates::CopyDst);
+            dx::HeapProperties::readback()
+        } else {
+            assert_eq!(init_state, ResourceStates::GenericRead);
+            dx::HeapProperties::upload()
+        };
 
         let resource: dx::Resource = device
             .raw
             .create_committed_resource(
-                &dx::HeapProperties::upload(),
+                &heap_props,
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
                 init_state.into(),
@@ -123,7 +142,12 @@ impl<T: Clone> Resource for StagingBuffer<T> {
         allocation: Allocation,
     ) -> Self {
         assert!(allocation.heap.mtype == MemoryHeapType::Cpu);
-        assert!(state == ResourceStates::GenericRead);
+
+        if desc.readback {
+            assert_eq!(state, ResourceStates::CopyDst);
+        } else {
+            assert!(state == ResourceStates::GenericRead);
+        }
 
         Self::inner_new(raw, desc, state, Some(allocation))
     }
@@ -152,6 +176,7 @@ impl<T: Clone> BufferResource for StagingBuffer<T> {
 #[derive(Clone, Debug)]
 pub struct StagingBufferDesc<T> {
     count: usize,
+    readback: bool,
     _marker: PhantomData<T>,
 }
 
@@ -159,8 +184,14 @@ impl<T> StagingBufferDesc<T> {
     pub fn new(size: usize) -> Self {
         Self {
             count: size,
+            readback: false,
             _marker: PhantomData,
         }
+    }
+
+    pub fn readback(mut self) -> Self {
+        self.readback = true;
+        self
     }
 }
 
