@@ -151,7 +151,7 @@ where
             2 * start * size_of::<<TimestampQuery<T> as QueryHeapType>::Type>(),
         );
 
-        let mut vec = Vec::with_capacity((end - start) * 2);
+        let mut vec = vec![Default::default(); (end - start) * 2];
         query
             .staging_buffer
             .read_data(&mut vec, Some((2 * start)..(2 * end)));

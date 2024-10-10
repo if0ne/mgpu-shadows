@@ -1,12 +1,9 @@
 use std::num::NonZero;
 
 use mgpu_shadows::graphics::{
-    device::Device,
-    heaps::MemoryHeapType,
-    resources::{
+    command_queue::{Graphics, Transfer}, device::Device, heaps::MemoryHeapType, query::{QueryResolver, TimestampQuery}, resources::{
         GpuOnlyDescriptorAccess, ResourceStates, SharedResource, Texture, TextureDesc, TextureUsage,
-    },
-    swapchain::Swapchain,
+    }, swapchain::Swapchain
 };
 use oxidx::dx::{
     create_debug, create_factory4, Debug, Factory4, FactoryCreationFlags, Format, IDebug,
@@ -56,6 +53,22 @@ fn main() {
         ResourceStates::RenderTarget,
         ResourceStates::CopyDst,
     );
+
+    let fence = gpu1.create_fence();
+    let queue = gpu1.create_transfer_command_queue(fence);
+
+    let query = gpu1.create_query_heap::<TimestampQuery<Transfer>>(1);
+
+    let worker = queue.get_worker_thread(None);
+
+    worker.begin_query(&query, 0);
+    worker.end_query(&query, 0);
+
+    let res = worker.resolve_query(&query, 0..1);
+
+    dbg!(res);
+
+    queue.push_worker(worker);
 }
 
 #[derive(Debug)]

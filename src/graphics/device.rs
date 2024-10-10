@@ -74,11 +74,11 @@ impl Device {
     }
 
     pub fn create_compute_command_queue<F: Fence>(&self, fence: F) -> CommandQueue<Compute, F> {
-        CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::direct())
+        CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::compute())
     }
 
     pub fn create_transfer_command_queue<F: Fence>(&self, fence: F) -> CommandQueue<Transfer, F> {
-        CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::direct())
+        CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::copy())
     }
 
     pub fn create_rtv_descriptor_heap(&self, capacity: usize) -> DescriptorHeap<RtvHeapView> {
