@@ -23,8 +23,8 @@ use crate::graphics::{
 
 use super::{
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, SubresourceIndex,
-    TextureResource, TextureResourceDesc, TextureUsage,
+    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, ShareableTexture,
+    ShareableTextureDesc, SubresourceIndex, TextureResource, TextureResourceDesc, TextureUsage,
 };
 
 #[derive(Clone, Debug)]
@@ -317,8 +317,8 @@ impl TextureResource for Texture {
         if old != state {
             Some(dx::ResourceBarrier::transition(
                 self.get_raw(),
-                old,
-                state,
+                old.into(),
+                state.into(),
                 Some(index),
             ))
         } else {
@@ -326,6 +326,8 @@ impl TextureResource for Texture {
         }
     }
 }
+
+impl ShareableTexture for Texture {}
 
 #[derive(Clone, Debug)]
 pub struct TextureDesc {
@@ -347,7 +349,7 @@ impl TextureDesc {
             count: 1,
             mip_levels: 1,
             format,
-            layout: dx::TextureLayout::RowMajor,
+            layout: dx::TextureLayout::Unknown,
             usage: TextureUsage::ShaderResource,
             flags: dx::ResourceFlags::empty(),
         }
@@ -409,6 +411,17 @@ impl TextureResourceDesc for TextureDesc {
 
     fn with_layout(mut self, layout: dx::TextureLayout) -> Self {
         self.layout = layout;
+        self
+    }
+}
+
+impl ShareableTextureDesc for TextureDesc {
+    fn flags(&self) -> dx::ResourceFlags {
+        self.flags
+    }
+
+    fn with_flags(mut self, flags: dx::ResourceFlags) -> Self {
+        self.flags = flags;
         self
     }
 }

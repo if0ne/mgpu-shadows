@@ -8,7 +8,7 @@ use crate::graphics::{
 
 use super::super::device::Device;
 
-pub(in super::super) trait Resource {
+pub trait Resource {
     type Desc: ResourceDesc;
     type Access: Clone;
 
@@ -32,7 +32,7 @@ pub(in super::super) trait Resource {
     ) -> Self;
 }
 
-pub(in super::super) trait ResourceDesc: Into<dx::ResourceDesc> + Clone {}
+pub trait ResourceDesc: Into<dx::ResourceDesc> + Clone {}
 
 pub trait BufferResourceDesc: ResourceDesc {}
 pub trait TextureResourceDesc: ResourceDesc {

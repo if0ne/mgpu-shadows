@@ -3,12 +3,14 @@ use std::num::NonZero;
 use mgpu_shadows::graphics::{
     device::Device,
     heaps::MemoryHeapType,
-    resources::{GpuOnlyDescriptorAccess, SharedResource, TextureResource, TextureResourceDesc},
+    resources::{
+        GpuOnlyDescriptorAccess, ResourceStates, SharedResource, Texture, TextureDesc, TextureUsage,
+    },
     swapchain::Swapchain,
 };
 use oxidx::dx::{
-    create_debug, create_factory, Debug, Factory4, FactoryCreationFlags, Format, IDebug, IFactory4,
-    Rect, ResourceFlags, ResourceStates, Viewport,
+    create_debug, create_factory4, Debug, Factory4, FactoryCreationFlags, Format, IDebug,
+    IFactory4, Rect, Viewport,
 };
 use winit::{
     application::ApplicationHandler,
@@ -20,7 +22,7 @@ use winit::{
 
 fn main() {
     //run_sample::<Sample>();
-    let factory: Factory4 = create_factory(FactoryCreationFlags::Debug).unwrap();
+    let factory: Factory4 = create_factory4(FactoryCreationFlags::Debug).unwrap();
     let adapter = factory.enum_adapters(0).unwrap();
 
     let debug: Debug = create_debug().unwrap();
@@ -30,39 +32,30 @@ fn main() {
     let heap1 = gpu1.create_heap(1920 * 1080 * 3, MemoryHeapType::Shared);
     let desc1 = gpu1.create_descriptor_allocator(8, 8, 8, 8);
 
-    let factory: Factory4 = create_factory(FactoryCreationFlags::Debug).unwrap();
+    let factory: Factory4 = create_factory4(FactoryCreationFlags::Debug).unwrap();
     let adapter = factory.enum_warp_adapters().unwrap();
 
     let gpu2 = Device::new(factory, adapter);
     let heap2 = heap1.connect(gpu2.clone());
     let desc2 = gpu2.create_descriptor_allocator(8, 8, 8, 8);
 
-    let res1: SharedResource<TextureResource> = gpu1.create_shared_texture(
+    let res1: SharedResource<Texture> = gpu1.create_shared_texture(
         &heap1,
         0,
-        TextureResourceDesc {
-            width: 1920,
-            height: 1080,
-            format: Format::R8Unorm,
-            flags: ResourceFlags::AllowRenderTarget,
-            layout: oxidx::dx::TextureLayout::Unknown,
-            mip_levels: 1,
-        },
+        TextureDesc::new(1920, 1080, Format::R8Unorm)
+            .with_usage(TextureUsage::RenderTarget { color: None }),
         GpuOnlyDescriptorAccess(desc1.clone()),
         ResourceStates::RenderTarget,
-        ResourceStates::CopyDest,
+        ResourceStates::CopyDst,
     );
 
-    let res2 = res1.connect(
+    let res2 = res1.connect_texture(
         &heap2,
         0,
         GpuOnlyDescriptorAccess(desc2.clone()),
         ResourceStates::RenderTarget,
-        ResourceStates::CopyDest,
+        ResourceStates::CopyDst,
     );
-
-    dbg!(res1);
-    dbg!(res2);
 }
 
 #[derive(Debug)]

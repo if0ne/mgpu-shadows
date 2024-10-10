@@ -146,8 +146,7 @@ where
         self.list.resolve_query_data(
             &query.raw,
             dx::QueryType::Timestamp,
-            start * 2,
-            end - start,
+            (start * 2)..(end * 2),
             query.staging_buffer.get_raw(),
             2 * start * size_of::<<TimestampQuery<T> as QueryHeapType>::Type>(),
         );

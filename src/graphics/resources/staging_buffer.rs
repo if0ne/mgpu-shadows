@@ -186,8 +186,8 @@ impl<T: Clone> BufferResource for StagingBuffer<T> {
         if old != state {
             Some(dx::ResourceBarrier::transition(
                 self.get_raw(),
-                old,
-                state,
+                old.into(),
+                state.into(),
                 None,
             ))
         } else {

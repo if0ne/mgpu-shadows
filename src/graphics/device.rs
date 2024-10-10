@@ -239,7 +239,7 @@ impl Device {
                 height: layouts[i].footprint().height(),
                 depth: layouts[i].footprint().depth(),
                 row_size: row_sizes[i] as usize,
-                size: (num_rows[i] as usize * row_sizes[i]) as usize,
+                size: num_rows[i] as usize * row_sizes[i] as usize,
             })
             .collect();
 

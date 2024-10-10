@@ -214,8 +214,8 @@ impl<T: IndexBufferType> BufferResource for IndexBuffer<T> {
         if old != state {
             Some(dx::ResourceBarrier::transition(
                 self.get_raw(),
-                old,
-                state,
+                old.into(),
+                state.into(),
                 None,
             ))
         } else {
