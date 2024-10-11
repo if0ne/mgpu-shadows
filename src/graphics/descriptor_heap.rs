@@ -6,14 +6,14 @@ use parking_lot::Mutex;
 use super::device::Device;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ResourceDescriptor<T: DescriptorHeapType> {
+pub struct GpuView<T: ViewType> {
     index: usize,
     gpu: dx::GpuDescriptorHandle,
     cpu: dx::CpuDescriptorHandle,
     _marker: PhantomData<T>,
 }
 
-impl<T: DescriptorHeapType> ResourceDescriptor<T> {
+impl<T: ViewType> GpuView<T> {
     pub fn gpu(&self) -> dx::GpuDescriptorHandle {
         self.gpu
     }
@@ -42,16 +42,16 @@ impl DescriptorAllocator {
         }))
     }
 
-    pub fn remove_rtv(&self, handle: ResourceDescriptor<RtvHeapView>) {
+    pub fn remove_rtv(&self, handle: GpuView<RtvView>) {
         self.rtv.lock().remove(handle)
     }
 
-    pub fn remove_dsv(&self, handle: ResourceDescriptor<DsvHeapView>) {
+    pub fn remove_dsv(&self, handle: GpuView<DsvView>) {
         self.dsv.lock().remove(handle)
     }
 
-    pub fn remove_cbv(&self, handle: ResourceDescriptor<CbvView>) {
-        self.cbv_srv_uav.lock().remove(ResourceDescriptor {
+    pub fn remove_cbv(&self, handle: GpuView<CbvView>) {
+        self.cbv_srv_uav.lock().remove(GpuView {
             index: handle.index,
             gpu: handle.gpu,
             cpu: handle.cpu,
@@ -59,8 +59,8 @@ impl DescriptorAllocator {
         })
     }
 
-    pub fn remove_srv(&self, handle: ResourceDescriptor<SrvView>) {
-        self.cbv_srv_uav.lock().remove(ResourceDescriptor {
+    pub fn remove_srv(&self, handle: GpuView<SrvView>) {
+        self.cbv_srv_uav.lock().remove(GpuView {
             index: handle.index,
             gpu: handle.gpu,
             cpu: handle.cpu,
@@ -68,8 +68,8 @@ impl DescriptorAllocator {
         })
     }
 
-    pub fn remove_uav(&self, handle: ResourceDescriptor<UavView>) {
-        self.cbv_srv_uav.lock().remove(ResourceDescriptor {
+    pub fn remove_uav(&self, handle: GpuView<UavView>) {
+        self.cbv_srv_uav.lock().remove(GpuView {
             index: handle.index,
             gpu: handle.gpu,
             cpu: handle.cpu,
@@ -77,7 +77,7 @@ impl DescriptorAllocator {
         })
     }
 
-    pub fn remove_sampler(&self, handle: ResourceDescriptor<SamplerView>) {
+    pub fn remove_sampler(&self, handle: GpuView<SamplerView>) {
         self.sampler.lock().remove(handle)
     }
 
@@ -85,7 +85,7 @@ impl DescriptorAllocator {
         &self,
         resource: &dx::Resource,
         desc: Option<&dx::RenderTargetViewDesc>,
-    ) -> ResourceDescriptor<RtvHeapView> {
+    ) -> GpuView<RtvView> {
         self.rtv.lock().push(resource, desc)
     }
 
@@ -93,18 +93,18 @@ impl DescriptorAllocator {
         &self,
         resource: &dx::Resource,
         desc: Option<&dx::DepthStencilViewDesc>,
-    ) -> ResourceDescriptor<DsvHeapView> {
+    ) -> GpuView<DsvView> {
         self.dsv.lock().push(resource, desc)
     }
 
-    pub fn push_sampler(&self, desc: &dx::SamplerDesc) -> ResourceDescriptor<SamplerView> {
+    pub fn push_sampler(&self, desc: &dx::SamplerDesc) -> GpuView<SamplerView> {
         self.sampler.lock().push(desc)
     }
 
     pub fn push_cbv(
         &self,
         desc: Option<&dx::ConstantBufferViewDesc>,
-    ) -> ResourceDescriptor<CbvView> {
+    ) -> GpuView<CbvView> {
         self.cbv_srv_uav.lock().push_cbv(desc)
     }
 
@@ -112,7 +112,7 @@ impl DescriptorAllocator {
         &self,
         resource: &dx::Resource,
         desc: Option<&dx::ShaderResourceViewDesc>,
-    ) -> ResourceDescriptor<SrvView> {
+    ) -> GpuView<SrvView> {
         self.cbv_srv_uav.lock().push_srv(resource, desc)
     }
 
@@ -121,7 +121,7 @@ impl DescriptorAllocator {
         resource: &dx::Resource,
         counter_resource: Option<&dx::Resource>,
         desc: Option<&dx::UnorderedAccessViewDesc>,
-    ) -> ResourceDescriptor<UavView> {
+    ) -> GpuView<UavView> {
         self.cbv_srv_uav
             .lock()
             .push_uav(resource, counter_resource, desc)
@@ -138,14 +138,14 @@ impl Deref for DescriptorAllocator {
 
 #[derive(Debug)]
 pub struct DescriptorAllocatorInner {
-    rtv: Mutex<DescriptorHeap<RtvHeapView>>,
-    dsv: Mutex<DescriptorHeap<DsvHeapView>>,
-    cbv_srv_uav: Mutex<DescriptorHeap<CbvSrvUavHeapView>>,
+    rtv: Mutex<DescriptorHeap<RtvView>>,
+    dsv: Mutex<DescriptorHeap<DsvView>>,
+    cbv_srv_uav: Mutex<DescriptorHeap<CbvSrvUavView>>,
     sampler: Mutex<DescriptorHeap<SamplerView>>,
 }
 
 #[derive(Debug)]
-pub struct DescriptorHeap<T: DescriptorHeapType> {
+pub struct DescriptorHeap<T: ViewType> {
     device: Device,
     raw: dx::DescriptorHeap,
     free_list: Vec<usize>,
@@ -157,7 +157,7 @@ pub struct DescriptorHeap<T: DescriptorHeapType> {
     _marker: PhantomData<T>,
 }
 
-impl<T: DescriptorHeapType> DescriptorHeap<T> {
+impl<T: ViewType> DescriptorHeap<T> {
     pub(super) fn inner_new(device: Device, capacity: usize) -> Self {
         let inner: dx::DescriptorHeap = device
             .raw
@@ -196,7 +196,7 @@ impl<T: DescriptorHeapType> DescriptorHeap<T> {
         self.raw = new_inner;
     }
 
-    pub fn remove(&mut self, handle: ResourceDescriptor<T>) {
+    pub fn remove(&mut self, handle: GpuView<T>) {
         if handle.index >= self.size {
             panic!(
                 "HeapView<{}>: Index out of bounds, length {} and passed {}",
@@ -211,12 +211,12 @@ impl<T: DescriptorHeapType> DescriptorHeap<T> {
     }
 }
 
-impl DescriptorHeap<RtvHeapView> {
+impl DescriptorHeap<RtvView> {
     pub fn push(
         &mut self,
         resource: &dx::Resource,
         desc: Option<&dx::RenderTargetViewDesc>,
-    ) -> ResourceDescriptor<RtvHeapView> {
+    ) -> GpuView<RtvView> {
         let index = if let Some(free) = self.free_list.pop() {
             free
         } else {
@@ -227,7 +227,7 @@ impl DescriptorHeap<RtvHeapView> {
             self.size
         };
 
-        let handle = ResourceDescriptor {
+        let handle = GpuView {
             index,
             gpu: self
                 .raw
@@ -250,12 +250,12 @@ impl DescriptorHeap<RtvHeapView> {
     }
 }
 
-impl DescriptorHeap<DsvHeapView> {
+impl DescriptorHeap<DsvView> {
     pub fn push(
         &mut self,
         resource: &dx::Resource,
         desc: Option<&dx::DepthStencilViewDesc>,
-    ) -> ResourceDescriptor<DsvHeapView> {
+    ) -> GpuView<DsvView> {
         let index = if let Some(free) = self.free_list.pop() {
             free
         } else {
@@ -266,7 +266,7 @@ impl DescriptorHeap<DsvHeapView> {
             self.size
         };
 
-        let handle = ResourceDescriptor {
+        let handle = GpuView {
             index,
             gpu: self
                 .raw
@@ -289,11 +289,11 @@ impl DescriptorHeap<DsvHeapView> {
     }
 }
 
-impl DescriptorHeap<CbvSrvUavHeapView> {
+impl DescriptorHeap<CbvSrvUavView> {
     pub fn push_cbv(
         &mut self,
         desc: Option<&dx::ConstantBufferViewDesc>,
-    ) -> ResourceDescriptor<CbvView> {
+    ) -> GpuView<CbvView> {
         let index = if let Some(free) = self.free_list.pop() {
             free
         } else {
@@ -304,7 +304,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
             self.size
         };
 
-        let handle = ResourceDescriptor {
+        let handle = GpuView {
             index,
             gpu: self
                 .raw
@@ -330,7 +330,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
         &mut self,
         resources: &dx::Resource,
         desc: Option<&dx::ShaderResourceViewDesc>,
-    ) -> ResourceDescriptor<SrvView> {
+    ) -> GpuView<SrvView> {
         let index = if let Some(free) = self.free_list.pop() {
             free
         } else {
@@ -341,7 +341,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
             self.size
         };
 
-        let handle = ResourceDescriptor {
+        let handle = GpuView {
             index,
             gpu: self
                 .raw
@@ -368,7 +368,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
         resources: &dx::Resource,
         counter_resources: Option<&dx::Resource>,
         desc: Option<&dx::UnorderedAccessViewDesc>,
-    ) -> ResourceDescriptor<UavView> {
+    ) -> GpuView<UavView> {
         let index = if let Some(free) = self.free_list.pop() {
             free
         } else {
@@ -379,7 +379,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
             self.size
         };
 
-        let handle = ResourceDescriptor {
+        let handle = GpuView {
             index,
             gpu: self
                 .raw
@@ -406,7 +406,7 @@ impl DescriptorHeap<CbvSrvUavHeapView> {
 }
 
 impl DescriptorHeap<SamplerView> {
-    pub fn push(&mut self, desc: &dx::SamplerDesc) -> ResourceDescriptor<SamplerView> {
+    pub fn push(&mut self, desc: &dx::SamplerDesc) -> GpuView<SamplerView> {
         let index = if let Some(free) = self.free_list.pop() {
             free
         } else {
@@ -417,7 +417,7 @@ impl DescriptorHeap<SamplerView> {
             self.size
         };
 
-        let handle = ResourceDescriptor {
+        let handle = GpuView {
             index,
             gpu: self
                 .raw
@@ -438,15 +438,15 @@ impl DescriptorHeap<SamplerView> {
     }
 }
 
-pub(super) trait DescriptorHeapType {
+pub(super) trait ViewType {
     const RAW_TYPE: dx::DescriptorHeapType;
 
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct RtvHeapView;
-impl DescriptorHeapType for RtvHeapView {
+pub struct RtvView;
+impl ViewType for RtvView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Rtv;
 
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
@@ -455,8 +455,8 @@ impl DescriptorHeapType for RtvHeapView {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct DsvHeapView;
-impl DescriptorHeapType for DsvHeapView {
+pub struct DsvView;
+impl ViewType for DsvView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Dsv;
 
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
@@ -465,8 +465,8 @@ impl DescriptorHeapType for DsvHeapView {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CbvSrvUavHeapView;
-impl DescriptorHeapType for CbvSrvUavHeapView {
+pub struct CbvSrvUavView;
+impl ViewType for CbvSrvUavView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
 
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
@@ -476,7 +476,7 @@ impl DescriptorHeapType for CbvSrvUavHeapView {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CbvView;
-impl DescriptorHeapType for CbvView {
+impl ViewType for CbvView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
 
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
@@ -486,7 +486,7 @@ impl DescriptorHeapType for CbvView {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct SrvView;
-impl DescriptorHeapType for SrvView {
+impl ViewType for SrvView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
 
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
@@ -496,7 +496,7 @@ impl DescriptorHeapType for SrvView {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct UavView;
-impl DescriptorHeapType for UavView {
+impl ViewType for UavView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
 
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
@@ -506,7 +506,7 @@ impl DescriptorHeapType for UavView {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct SamplerView;
-impl DescriptorHeapType for SamplerView {
+impl ViewType for SamplerView {
     const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Sampler;
 
     fn get_desc(num: usize) -> dx::DescriptorHeapDesc {

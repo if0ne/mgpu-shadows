@@ -35,12 +35,12 @@ pub trait Resource {
 pub trait ResourceDesc: Into<dx::ResourceDesc> + Clone {}
 
 pub trait BufferResourceDesc: ResourceDesc {}
-pub trait TextureResourceDesc: ResourceDesc {
+pub trait ImageResourceDesc: ResourceDesc {
     fn clear_color(&self) -> Option<dx::ClearValue>;
     fn with_layout(self, layout: dx::TextureLayout) -> Self;
 }
 
-pub trait ShareableTextureDesc: TextureResourceDesc {
+pub trait ShareableImageDesc: ImageResourceDesc {
     fn flags(&self) -> dx::ResourceFlags;
     fn with_flags(self, flags: dx::ResourceFlags) -> Self;
 }
@@ -53,7 +53,7 @@ pub trait ShareableBufferDesc: BufferResourceDesc {
 pub trait BufferResource: Resource<Desc: BufferResourceDesc> {
     fn get_barrier(&self, state: ResourceStates) -> Option<dx::ResourceBarrier<'_>>;
 }
-pub trait TextureResource: Resource<Desc: TextureResourceDesc> {
+pub trait ImageResource: Resource<Desc: ImageResourceDesc> {
     fn get_barrier(
         &self,
         state: ResourceStates,
@@ -62,7 +62,7 @@ pub trait TextureResource: Resource<Desc: TextureResourceDesc> {
 }
 
 pub trait ShareableBuffer: BufferResource<Desc: ShareableBufferDesc> {}
-pub trait ShareableTexture: TextureResource<Desc: ShareableTextureDesc> {}
+pub trait ShareableImage: ImageResource<Desc: ShareableImageDesc> {}
 
 #[derive(Clone, Debug)]
 pub enum GpuAccess {

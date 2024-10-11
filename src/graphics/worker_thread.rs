@@ -4,7 +4,7 @@ use super::{
     device::Device,
     resources::{
         BufferResource, IndexBuffer, IndexBufferType, ResourceStates, SharedResource,
-        SubresourceIndex, Texture, TextureResource, VertexBuffer,
+        SubresourceIndex, Image, ImageResource, VertexBuffer,
     },
 };
 
@@ -39,7 +39,7 @@ impl<T: WorkerType> WorkerThread<T> {
         }
     }
 
-    pub fn pull_shared_texture<R: TextureResource>(&self, shared_resource: &SharedResource<R>) {
+    pub fn pull_shared_texture<R: ImageResource>(&self, shared_resource: &SharedResource<R>) {
         if self.device.is_cross_adapter_texture_supported() {
             return;
         }
@@ -73,7 +73,7 @@ impl<T: WorkerType> WorkerThread<T> {
         );
     }
 
-    pub fn push_shared_texture<R: TextureResource>(&self, shared_resource: &SharedResource<R>) {
+    pub fn push_shared_texture<R: ImageResource>(&self, shared_resource: &SharedResource<R>) {
         if self.device.is_cross_adapter_texture_supported() {
             return;
         }
@@ -196,7 +196,7 @@ impl<T: WorkerType> WorkerThread<T> {
         }
     }
 
-    pub fn upload_to_texture2d(&self, dst: &Texture, src: &[u8]) {
+    pub fn upload_to_texture2d(&self, dst: &Image, src: &[u8]) {
         if let Some(barrier) = dst.get_barrier(
             ResourceStates::CopyDst,
             SubresourceIndex {

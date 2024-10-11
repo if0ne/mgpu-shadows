@@ -2,10 +2,10 @@ use oxidx::dx;
 
 use crate::graphics::{
     heaps::{MemoryHeap, MemoryHeapType},
-    resources::{ShareableBufferDesc, ShareableTextureDesc, TextureResourceDesc},
+    resources::{ShareableBufferDesc, ShareableImageDesc, ImageResourceDesc},
 };
 
-use super::{super::device::Device, Resource, ResourceStates, ShareableBuffer, ShareableTexture};
+use super::{super::device::Device, Resource, ResourceStates, ShareableBuffer, ShareableImage};
 
 #[derive(Clone, Debug)]
 pub struct SharedResource<R: Resource> {
@@ -45,8 +45,8 @@ impl<R: Resource> SharedResource<R> {
     }
 }
 
-impl<R: ShareableTexture> SharedResource<R> {
-    pub(in super::super) fn inner_new_texture(
+impl<R: ShareableImage> SharedResource<R> {
+    pub(in super::super) fn inner_new_image(
         owner: &MemoryHeap,
         offset: usize,
         desc: R::Desc,

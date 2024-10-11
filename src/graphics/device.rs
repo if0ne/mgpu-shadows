@@ -9,14 +9,14 @@ use super::{
     command_allocator::CommandAllocator,
     command_queue::{CommandQueue, Compute, Graphics, Transfer, WorkerType},
     descriptor_heap::{
-        CbvSrvUavHeapView, DescriptorAllocator, DescriptorHeap, DsvHeapView, RtvHeapView,
+        CbvSrvUavView, DescriptorAllocator, DescriptorHeap, DsvView, RtvView,
     },
     fence::{Fence, LocalFence, SharedFence},
     heaps::{MemoryHeap, MemoryHeapType},
     query::{QueryHeap, QueryHeapType},
     resources::{
         BufferResource, BufferResourceDesc, Resource, ResourceStates, ShareableBuffer,
-        ShareableTexture, SharedResource, TextureResource, TextureResourceDesc,
+        ShareableImage, SharedResource, ImageResource, ImageResourceDesc,
     },
     swapchain::{Swapchain, SwapchainDesc},
     utils::{BufferCopyableFootprints, MipInfo, TextureCopyableFootprints},
@@ -81,18 +81,18 @@ impl Device {
         CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::copy())
     }
 
-    pub fn create_rtv_descriptor_heap(&self, capacity: usize) -> DescriptorHeap<RtvHeapView> {
+    pub fn create_rtv_descriptor_heap(&self, capacity: usize) -> DescriptorHeap<RtvView> {
         DescriptorHeap::inner_new(self.clone(), capacity)
     }
 
-    pub fn create_dsv_descriptor_heap(&self, capacity: usize) -> DescriptorHeap<DsvHeapView> {
+    pub fn create_dsv_descriptor_heap(&self, capacity: usize) -> DescriptorHeap<DsvView> {
         DescriptorHeap::inner_new(self.clone(), capacity)
     }
 
     pub fn create_cbv_srv_uav_descriptor_heap(
         &self,
         capacity: usize,
-    ) -> DescriptorHeap<CbvSrvUavHeapView> {
+    ) -> DescriptorHeap<CbvSrvUavView> {
         DescriptorHeap::inner_new(self.clone(), capacity)
     }
 
@@ -138,7 +138,7 @@ impl Device {
         heap.create_placed_buffer(desc, offset, access, initial_state)
     }
 
-    pub fn create_placed_texture<R: TextureResource>(
+    pub fn create_placed_image<R: ImageResource>(
         &self,
         heap: &MemoryHeap,
         desc: R::Desc,
@@ -161,7 +161,7 @@ impl Device {
         SharedResource::inner_new_buffer(heap, offset, desc, access, local_state, share_state)
     }
 
-    pub fn create_shared_texture<R: ShareableTexture>(
+    pub fn create_shared_image<R: ShareableImage>(
         &self,
         heap: &MemoryHeap,
         offset: usize,
@@ -170,7 +170,7 @@ impl Device {
         local_state: ResourceStates,
         share_state: ResourceStates,
     ) -> SharedResource<R> {
-        SharedResource::inner_new_texture(heap, offset, desc, access, local_state, share_state)
+        SharedResource::inner_new_image(heap, offset, desc, access, local_state, share_state)
     }
 
     pub fn create_swapchain(
@@ -211,7 +211,7 @@ impl Device {
         BufferCopyableFootprints::new(total_size as usize)
     }
 
-    pub fn get_texture_copyable_footprints<T: TextureResourceDesc>(
+    pub fn get_texture_copyable_footprints<T: ImageResourceDesc>(
         &self,
         desc: T,
     ) -> TextureCopyableFootprints {

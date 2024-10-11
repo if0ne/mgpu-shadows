@@ -13,7 +13,7 @@ use parking_lot::Mutex;
 use crate::graphics::{
     command_queue::WorkerType,
     descriptor_heap::{
-        DescriptorHeapType, DsvHeapView, ResourceDescriptor, RtvHeapView, SrvView, UavView,
+        ViewType, DsvView, GpuView, RtvView, SrvView, UavView,
     },
     device::Device,
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
@@ -23,14 +23,14 @@ use crate::graphics::{
 
 use super::{
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, ShareableTexture,
-    ShareableTextureDesc, SubresourceIndex, TextureResource, TextureResourceDesc, TextureUsage,
+    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, ShareableImage,
+    ShareableImageDesc, SubresourceIndex, ImageResource, ImageResourceDesc, TextureUsage,
 };
 
 #[derive(Clone, Debug)]
-pub struct Texture(Arc<TextureInner>);
+pub struct Image(Arc<TextureInner>);
 
-impl Deref for Texture {
+impl Deref for Image {
     type Target = TextureInner;
 
     fn deref(&self) -> &Self::Target {
@@ -41,30 +41,30 @@ impl Deref for Texture {
 #[derive(Debug)]
 pub struct TextureInner {
     raw: dx::Resource,
-    desc: TextureDesc,
+    desc: ImageDesc,
     state: Vec<Atomic<ResourceStates>>,
     allocation: Option<Allocation>,
 
-    rtv: OnceLock<ResourceDescriptor<RtvHeapView>>,
-    dsv: OnceLock<ResourceDescriptor<DsvHeapView>>,
-    srv: OnceLock<ResourceDescriptor<SrvView>>,
-    uav: OnceLock<ResourceDescriptor<UavView>>,
+    rtv: OnceLock<GpuView<RtvView>>,
+    dsv: OnceLock<GpuView<DsvView>>,
+    srv: OnceLock<GpuView<SrvView>>,
+    uav: OnceLock<GpuView<UavView>>,
 
-    cached_rtv: Mutex<HashMap<TextureViewDesc<RtvHeapView>, ResourceDescriptor<RtvHeapView>>>,
-    cached_dsv: Mutex<HashMap<TextureViewDesc<DsvHeapView>, ResourceDescriptor<DsvHeapView>>>,
-    cached_srv: Mutex<HashMap<TextureViewDesc<SrvView>, ResourceDescriptor<SrvView>>>,
-    cached_uav: Mutex<HashMap<TextureViewDesc<UavView>, ResourceDescriptor<UavView>>>,
+    cached_rtv: Mutex<HashMap<ImageViewDesc<RtvView>, GpuView<RtvView>>>,
+    cached_dsv: Mutex<HashMap<ImageViewDesc<DsvView>, GpuView<DsvView>>>,
+    cached_srv: Mutex<HashMap<ImageViewDesc<SrvView>, GpuView<SrvView>>>,
+    cached_uav: Mutex<HashMap<ImageViewDesc<UavView>, GpuView<UavView>>>,
     access: GpuOnlyDescriptorAccess,
 
     footprint: TextureCopyableFootprints,
     staging_buffer: StagingBuffer<u8>,
 }
 
-impl Texture {
+impl Image {
     pub(in super::super) fn inner_new(
         device: &Device,
         resource: dx::Resource,
-        desc: TextureDesc,
+        desc: ImageDesc,
         access: GpuOnlyDescriptorAccess,
         state: ResourceStates,
         allocation: Option<Allocation>,
@@ -103,11 +103,11 @@ impl Texture {
 }
 
 // TODO: Desc validation
-impl Texture {
+impl Image {
     pub fn rtv(
         &self,
-        desc: Option<TextureViewDesc<RtvHeapView>>,
-    ) -> ResourceDescriptor<RtvHeapView> {
+        desc: Option<ImageViewDesc<RtvView>>,
+    ) -> GpuView<RtvView> {
         match desc {
             Some(mut desc) => {
                 if desc.format.is_none() {
@@ -136,8 +136,8 @@ impl Texture {
 
     pub fn dsv(
         &self,
-        desc: Option<TextureViewDesc<DsvHeapView>>,
-    ) -> ResourceDescriptor<DsvHeapView> {
+        desc: Option<ImageViewDesc<DsvView>>,
+    ) -> GpuView<DsvView> {
         match desc {
             Some(mut desc) => {
                 if desc.format.is_none() {
@@ -164,7 +164,7 @@ impl Texture {
         }
     }
 
-    pub fn srv(&self, desc: Option<TextureViewDesc<SrvView>>) -> ResourceDescriptor<SrvView> {
+    pub fn srv(&self, desc: Option<ImageViewDesc<SrvView>>) -> GpuView<SrvView> {
         match desc {
             Some(mut desc) => {
                 if desc.format.is_none() {
@@ -191,7 +191,7 @@ impl Texture {
         }
     }
 
-    pub fn uav(&self, desc: Option<TextureViewDesc<UavView>>) -> ResourceDescriptor<UavView> {
+    pub fn uav(&self, desc: Option<ImageViewDesc<UavView>>) -> GpuView<UavView> {
         match desc {
             Some(mut desc) => {
                 if desc.format.is_none() {
@@ -255,8 +255,8 @@ impl Drop for TextureInner {
     }
 }
 
-impl Resource for Texture {
-    type Desc = TextureDesc;
+impl Resource for Image {
+    type Desc = ImageDesc;
     type Access = GpuOnlyDescriptorAccess;
 
     fn get_raw(&self) -> &dx::Resource {
@@ -304,7 +304,7 @@ impl Resource for Texture {
     }
 }
 
-impl TextureResource for Texture {
+impl ImageResource for Image {
     fn get_barrier(
         &self,
         state: ResourceStates,
@@ -327,10 +327,10 @@ impl TextureResource for Texture {
     }
 }
 
-impl ShareableTexture for Texture {}
+impl ShareableImage for Image {}
 
 #[derive(Clone, Debug)]
-pub struct TextureDesc {
+pub struct ImageDesc {
     width: u32,
     height: u32,
     count: u8,
@@ -341,7 +341,7 @@ pub struct TextureDesc {
     flags: dx::ResourceFlags,
 }
 
-impl TextureDesc {
+impl ImageDesc {
     pub fn new(width: u32, height: u32, format: dx::Format) -> Self {
         Self {
             width,
@@ -383,7 +383,7 @@ impl TextureDesc {
     }
 }
 
-impl Into<dx::ResourceDesc> for TextureDesc {
+impl Into<dx::ResourceDesc> for ImageDesc {
     fn into(self) -> dx::ResourceDesc {
         dx::ResourceDesc::texture_2d(self.width, self.height)
             .with_array_size(self.count as u16)
@@ -394,8 +394,8 @@ impl Into<dx::ResourceDesc> for TextureDesc {
     }
 }
 
-impl ResourceDesc for TextureDesc {}
-impl TextureResourceDesc for TextureDesc {
+impl ResourceDesc for ImageDesc {}
+impl ImageResourceDesc for ImageDesc {
     fn clear_color(&self) -> Option<dx::ClearValue> {
         match &self.usage {
             TextureUsage::RenderTarget { color } => {
@@ -415,7 +415,7 @@ impl TextureResourceDesc for TextureDesc {
     }
 }
 
-impl ShareableTextureDesc for TextureDesc {
+impl ShareableImageDesc for ImageDesc {
     fn flags(&self) -> dx::ResourceFlags {
         self.flags
     }
@@ -427,7 +427,7 @@ impl ShareableTextureDesc for TextureDesc {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct TextureViewDesc<T: DescriptorHeapType> {
+pub struct ImageViewDesc<T: ViewType> {
     format: Option<dx::Format>,
     mip_base: u8,
     mip_slice: u8,
@@ -435,7 +435,7 @@ pub struct TextureViewDesc<T: DescriptorHeapType> {
     _marker: PhantomData<T>,
 }
 
-impl TextureViewDesc<RtvHeapView> {
+impl ImageViewDesc<RtvView> {
     pub fn rtv() -> Self {
         Self {
             format: None,
@@ -452,7 +452,7 @@ impl TextureViewDesc<RtvHeapView> {
     }
 }
 
-impl TextureViewDesc<DsvHeapView> {
+impl ImageViewDesc<DsvView> {
     pub fn dsv() -> Self {
         Self {
             format: None,
@@ -464,7 +464,7 @@ impl TextureViewDesc<DsvHeapView> {
     }
 }
 
-impl TextureViewDesc<SrvView> {
+impl ImageViewDesc<SrvView> {
     pub fn srv() -> Self {
         Self {
             format: None,
@@ -476,7 +476,7 @@ impl TextureViewDesc<SrvView> {
     }
 }
 
-impl TextureViewDesc<UavView> {
+impl ImageViewDesc<UavView> {
     pub fn srv() -> Self {
         Self {
             format: None,
@@ -488,7 +488,7 @@ impl TextureViewDesc<UavView> {
     }
 }
 
-impl<T: DescriptorHeapType> TextureViewDesc<T> {
+impl<T: ViewType> ImageViewDesc<T> {
     pub fn with_format(mut self, format: dx::Format) -> Self {
         self.format = Some(format);
         self
@@ -505,8 +505,8 @@ impl<T: DescriptorHeapType> TextureViewDesc<T> {
     }
 }
 
-impl From<TextureViewDesc<RtvHeapView>> for dx::RenderTargetViewDesc {
-    fn from(value: TextureViewDesc<RtvHeapView>) -> Self {
+impl From<ImageViewDesc<RtvView>> for dx::RenderTargetViewDesc {
+    fn from(value: ImageViewDesc<RtvView>) -> Self {
         if let Some(array) = value.array {
             Self::texture_2d_array(
                 value.format.unwrap_or(dx::Format::Unknown),
@@ -527,8 +527,8 @@ impl From<TextureViewDesc<RtvHeapView>> for dx::RenderTargetViewDesc {
     }
 }
 
-impl From<TextureViewDesc<DsvHeapView>> for dx::DepthStencilViewDesc {
-    fn from(value: TextureViewDesc<DsvHeapView>) -> Self {
+impl From<ImageViewDesc<DsvView>> for dx::DepthStencilViewDesc {
+    fn from(value: ImageViewDesc<DsvView>) -> Self {
         if let Some(array) = value.array {
             Self::texture_2d_array(
                 value.format.unwrap_or(dx::Format::Unknown),
@@ -547,8 +547,8 @@ impl From<TextureViewDesc<DsvHeapView>> for dx::DepthStencilViewDesc {
     }
 }
 
-impl From<TextureViewDesc<SrvView>> for dx::ShaderResourceViewDesc {
-    fn from(value: TextureViewDesc<SrvView>) -> Self {
+impl From<ImageViewDesc<SrvView>> for dx::ShaderResourceViewDesc {
+    fn from(value: ImageViewDesc<SrvView>) -> Self {
         if let Some(array) = value.array {
             Self::texture_2d_array(
                 value.format.unwrap_or(dx::Format::Unknown),
@@ -573,8 +573,8 @@ impl From<TextureViewDesc<SrvView>> for dx::ShaderResourceViewDesc {
     }
 }
 
-impl From<TextureViewDesc<UavView>> for dx::UnorderedAccessViewDesc {
-    fn from(value: TextureViewDesc<UavView>) -> Self {
+impl From<ImageViewDesc<UavView>> for dx::UnorderedAccessViewDesc {
+    fn from(value: ImageViewDesc<UavView>) -> Self {
         if let Some(array) = value.array {
             Self::texture_2d_array(
                 value.format.unwrap_or(dx::Format::Unknown),
@@ -598,9 +598,9 @@ impl From<TextureViewDesc<UavView>> for dx::UnorderedAccessViewDesc {
 #[cfg(test)]
 #[allow(unused)]
 mod tests {
-    use super::Texture;
+    use super::Image;
 
     const fn is_send_sync<T: Send + Sync>() {}
 
-    const _: () = is_send_sync::<Texture>();
+    const _: () = is_send_sync::<Image>();
 }

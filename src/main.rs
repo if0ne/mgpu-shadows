@@ -6,7 +6,7 @@ use mgpu_shadows::graphics::{
     heaps::MemoryHeapType,
     query::{QueryResolver, TimestampQuery},
     resources::{
-        GpuOnlyDescriptorAccess, ResourceStates, SharedResource, Texture, TextureDesc, TextureUsage,
+        GpuOnlyDescriptorAccess, ResourceStates, SharedResource, Image, ImageDesc, TextureUsage,
     },
     swapchain::Swapchain,
 };
@@ -41,10 +41,10 @@ fn main() {
     let heap2 = heap1.connect(gpu2.clone());
     let desc2 = gpu2.create_descriptor_allocator(8, 8, 8, 8);
 
-    let res1: SharedResource<Texture> = gpu1.create_shared_texture(
+    let res1: SharedResource<Image> = gpu1.create_shared_image(
         &heap1,
         0,
-        TextureDesc::new(1920, 1080, Format::R8Unorm)
+        ImageDesc::new(1920, 1080, Format::R8Unorm)
             .with_usage(TextureUsage::RenderTarget { color: None }),
         GpuOnlyDescriptorAccess(desc1.clone()),
         ResourceStates::RenderTarget,

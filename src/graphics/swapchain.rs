@@ -4,9 +4,9 @@ use oxidx::dx::{self, IFactory4, ISwapchain1, ISwapchain3, OUTPUT_NONE};
 
 use super::{
     command_queue::{CommandQueue, Graphics},
-    descriptor_heap::{DescriptorAllocator, DsvHeapView, ResourceDescriptor, RtvHeapView, SrvView},
+    descriptor_heap::{DescriptorAllocator, DsvView, GpuView, RtvView, SrvView},
     device::Device,
-    resources::{ResourceStates, Texture, TextureDesc, TextureUsage},
+    resources::{ResourceStates, Image, ImageDesc, TextureUsage},
 };
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub struct Swapchain {
     descriptor_allocator: DescriptorAllocator,
 
     images: Vec<SwapchainImage>,
-    depth: Texture,
+    depth: Image,
     desc: SwapchainDesc,
 
     current_back_buffer: usize,
@@ -54,8 +54,8 @@ impl Swapchain {
             })
             .collect();
 
-        let depth: Texture = device.create_commited_resource(
-            TextureDesc::new(desc.width, desc.height, dx::Format::D24UnormS8Uint).with_usage(
+        let depth: Image = device.create_commited_resource(
+            ImageDesc::new(desc.width, desc.height, dx::Format::D24UnormS8Uint).with_usage(
                 TextureUsage::DepthTarget {
                     color: Some((1.0, 0)),
                     srv: true,
@@ -79,11 +79,11 @@ impl Swapchain {
 }
 
 impl Swapchain {
-    pub fn get_rtv(&self) -> ResourceDescriptor<RtvHeapView> {
+    pub fn get_rtv(&self) -> GpuView<RtvView> {
         self.images[self.current_back_buffer].rtv
     }
 
-    pub fn get_rendet_target_as_srv(&self, index: usize) -> ResourceDescriptor<SrvView> {
+    pub fn get_rendet_target_as_srv(&self, index: usize) -> GpuView<SrvView> {
         if let Some(srv) = self.images[index].srv.get() {
             srv
         } else {
@@ -95,11 +95,11 @@ impl Swapchain {
         }
     }
 
-    pub fn get_dsv(&self) -> ResourceDescriptor<DsvHeapView> {
+    pub fn get_dsv(&self) -> GpuView<DsvView> {
         self.depth.dsv(None)
     }
 
-    pub fn get_depth_as_srv(&self) -> ResourceDescriptor<SrvView> {
+    pub fn get_depth_as_srv(&self) -> GpuView<SrvView> {
         self.depth.srv(None)
     }
 
@@ -151,7 +151,7 @@ impl From<SwapchainDesc> for dx::SwapchainDesc1 {
 #[derive(Debug)]
 pub struct SwapchainImage {
     raw: dx::Resource,
-    rtv: ResourceDescriptor<RtvHeapView>,
-    srv: Cell<Option<ResourceDescriptor<SrvView>>>,
+    rtv: GpuView<RtvView>,
+    srv: Cell<Option<GpuView<SrvView>>>,
     last_access: u64,
 }

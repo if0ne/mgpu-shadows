@@ -5,7 +5,7 @@ use oxidx::dx::{self, IDevice, IResource};
 use parking_lot::Mutex;
 
 use crate::graphics::{
-    descriptor_heap::{CbvView, DescriptorAllocator, ResourceDescriptor},
+    descriptor_heap::{CbvView, DescriptorAllocator, GpuView},
     device::Device,
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
     utils::NonNullSend,
@@ -77,7 +77,7 @@ impl<T: Clone> ConstantBuffer<T> {
         base_loc: dx::GpuVirtualAddress,
         size: usize,
         allocator: &DescriptorAllocator,
-    ) -> Vec<ResourceDescriptor<CbvView>> {
+    ) -> Vec<GpuView<CbvView>> {
         (0..size)
             .map(|i| {
                 let offset = base_loc + (i * size_of::<T>()) as u64;
@@ -121,7 +121,7 @@ impl<T: Clone> ConstantBuffer<T> {
         }
     }
 
-    pub fn get_descriptor(&self, index: usize) -> ResourceDescriptor<CbvView> {
+    pub fn get_descriptor(&self, index: usize) -> GpuView<CbvView> {
         match self.access {
             ConstantBufferGpuAccess::Descriptors(_, ref vec) => vec[index],
             _ => unreachable!(),
@@ -239,7 +239,7 @@ impl<T: Clone> BufferResourceDesc for ConstantBufferDesc<T> {}
 #[derive(Debug)]
 pub enum ConstantBufferGpuAccess {
     Addresses(Vec<dx::GpuVirtualAddress>),
-    Descriptors(DescriptorAllocator, Vec<ResourceDescriptor<CbvView>>),
+    Descriptors(DescriptorAllocator, Vec<GpuView<CbvView>>),
 }
 
 #[cfg(test)]
