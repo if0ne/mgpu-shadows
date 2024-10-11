@@ -80,6 +80,9 @@ impl Swapchain {
 
 impl Swapchain {
     pub fn get_rtv(&self) -> GpuView<RtvView> {
+        self.queue
+            .wait_on_cpu(self.images[self.current_back_buffer].last_access);
+
         self.images[self.current_back_buffer].rtv
     }
 
@@ -113,8 +116,6 @@ impl Swapchain {
         self.raw.present(interval, flags).unwrap();
         self.images[self.current_back_buffer].last_access = self.queue.fence.get_current_value();
         self.current_back_buffer = self.raw.get_current_back_buffer_index() as usize;
-        self.queue
-            .wait_on_cpu(self.images[self.current_back_buffer].last_access);
     }
 }
 
