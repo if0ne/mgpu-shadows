@@ -6,7 +6,7 @@ use super::{
     command_queue::{CommandQueue, Graphics},
     descriptor_heap::{DescriptorAllocator, DsvView, GpuView, RtvView, SrvView},
     device::Device,
-    resources::{ResourceStates, Image, ImageDesc, TextureUsage},
+    resources::{Image, ImageDesc, ResourceStates, TextureUsage},
 };
 
 #[derive(Debug)]

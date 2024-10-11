@@ -3,7 +3,7 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::graphics::{
     device::Device,
-    resources::{BufferResource, ResourceStates, ImageResource, ImageResourceDesc},
+    resources::{BufferResource, ImageResource, ImageResourceDesc, ResourceStates},
 };
 
 #[derive(Debug)]

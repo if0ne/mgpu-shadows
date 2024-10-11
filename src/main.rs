@@ -6,7 +6,7 @@ use mgpu_shadows::graphics::{
     heaps::MemoryHeapType,
     query::{QueryResolver, TimestampQuery},
     resources::{
-        GpuOnlyDescriptorAccess, ResourceStates, SharedResource, Image, ImageDesc, TextureUsage,
+        GpuOnlyDescriptorAccess, Image, ImageDesc, ResourceStates, SharedResource, TextureUsage,
     },
     swapchain::Swapchain,
 };
@@ -60,20 +60,23 @@ fn main() {
     );
 
     let fence = gpu1.create_fence();
-    let queue = gpu1.create_transfer_command_queue(fence);
+    let queue = gpu1.create_transfer_command_queue(fence.clone().into());
 
     let query = gpu1.create_query_heap::<TimestampQuery<Transfer>>(1);
 
     let worker = queue.get_worker_thread(None);
 
     worker.begin_query(&query, 0);
-    worker.end_query(&query, 0);
-
-    let res = worker.resolve_query(&query, 0..1);
-
-    dbg!(res);
 
     queue.push_worker(worker);
+    queue.wait_on_cpu(queue.execute());
+
+    let worker = queue.get_worker_thread(None);
+    worker.end_query(&query, 0);
+    let res = worker.resolve_query(&query, 0..1);
+    queue.push_worker(worker);
+    dbg!(res);
+    queue.wait_on_cpu(queue.execute());
 }
 
 #[derive(Debug)]

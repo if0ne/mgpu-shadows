@@ -101,10 +101,7 @@ impl DescriptorAllocator {
         self.sampler.lock().push(desc)
     }
 
-    pub fn push_cbv(
-        &self,
-        desc: Option<&dx::ConstantBufferViewDesc>,
-    ) -> GpuView<CbvView> {
+    pub fn push_cbv(&self, desc: Option<&dx::ConstantBufferViewDesc>) -> GpuView<CbvView> {
         self.cbv_srv_uav.lock().push_cbv(desc)
     }
 
@@ -290,10 +287,7 @@ impl DescriptorHeap<DsvView> {
 }
 
 impl DescriptorHeap<CbvSrvUavView> {
-    pub fn push_cbv(
-        &mut self,
-        desc: Option<&dx::ConstantBufferViewDesc>,
-    ) -> GpuView<CbvView> {
+    pub fn push_cbv(&mut self, desc: Option<&dx::ConstantBufferViewDesc>) -> GpuView<CbvView> {
         let index = if let Some(free) = self.free_list.pop() {
             free
         } else {

@@ -8,15 +8,13 @@ use oxidx::dx::{self, IAdapter3, IDevice};
 use super::{
     command_allocator::CommandAllocator,
     command_queue::{CommandQueue, Compute, Graphics, Transfer, WorkerType},
-    descriptor_heap::{
-        CbvSrvUavView, DescriptorAllocator, DescriptorHeap, DsvView, RtvView,
-    },
+    descriptor_heap::{CbvSrvUavView, DescriptorAllocator, DescriptorHeap, DsvView, RtvView},
     fence::{Fence, LocalFence, SharedFence},
     heaps::{MemoryHeap, MemoryHeapType},
     query::{QueryHeap, QueryHeapType},
     resources::{
-        BufferResource, BufferResourceDesc, Resource, ResourceStates, ShareableBuffer,
-        ShareableImage, SharedResource, ImageResource, ImageResourceDesc,
+        BufferResource, BufferResourceDesc, ImageResource, ImageResourceDesc, Resource,
+        ResourceStates, ShareableBuffer, ShareableImage, SharedResource,
     },
     swapchain::{Swapchain, SwapchainDesc},
     utils::{BufferCopyableFootprints, MipInfo, TextureCopyableFootprints},

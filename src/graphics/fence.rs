@@ -13,46 +13,36 @@ pub enum Fence {
 impl Fence {
     pub fn get_completed_value(&self) -> u64 {
         match self {
-            Fence::Local(fence) => fence.raw.get_completed_value(),
-            Fence::Shared(fence) => fence.fence.get_completed_value(),
+            Fence::Local(fence) => fence.get_completed_value(),
+            Fence::Shared(fence) => fence.get_completed_value(),
         }
     }
 
     pub fn set_event_on_completion(&self, value: u64, event: dx::Event) {
         match self {
-            Fence::Local(fence) => fence.raw.set_event_on_completion(value, event).unwrap(),
-            Fence::Shared(fence) => fence.fence.set_event_on_completion(value, event).unwrap(),
+            Fence::Local(fence) => fence.set_event_on_completion(value, event),
+            Fence::Shared(fence) => fence.set_event_on_completion(value, event),
         }
     }
 
     pub fn inc_value(&self) -> u64 {
         match self {
-            Fence::Local(fence) => {
-                fence
-                    .value
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-                    + 1
-            }
-            Fence::Shared(fence) => {
-                fence
-                    .value
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-                    + 1
-            }
+            Fence::Local(fence) => fence.inc_value(),
+            Fence::Shared(fence) => fence.inc_value(),
         }
     }
 
     pub fn get_current_value(&self) -> u64 {
         match self {
-            Fence::Local(fence) => fence.value.load(std::sync::atomic::Ordering::Relaxed),
-            Fence::Shared(fence) => fence.value.load(std::sync::atomic::Ordering::Relaxed),
+            Fence::Local(fence) => fence.get_current_value(),
+            Fence::Shared(fence) => fence.get_current_value(),
         }
     }
 
     pub(super) fn get_raw(&self) -> &dx::Fence {
         match self {
-            Fence::Local(fence) => &fence.raw,
-            Fence::Shared(fence) => &fence.fence,
+            Fence::Local(fence) => fence.get_raw(),
+            Fence::Shared(fence) => fence.get_raw(),
         }
     }
 }
@@ -71,6 +61,28 @@ impl LocalFence {
             raw: fence,
             value: Default::default(),
         }
+    }
+
+    pub(super) fn get_raw(&self) -> &dx::Fence {
+        &self.raw
+    }
+
+    pub fn get_completed_value(&self) -> u64 {
+        self.raw.get_completed_value()
+    }
+
+    pub fn set_event_on_completion(&self, value: u64, event: dx::Event) {
+        self.raw.set_event_on_completion(value, event).unwrap();
+    }
+
+    pub fn inc_value(&self) -> u64 {
+        self.value
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            + 1
+    }
+
+    pub fn get_current_value(&self) -> u64 {
+        self.value.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 
@@ -102,6 +114,28 @@ impl SharedFence {
             fence,
             value: Default::default(),
         }
+    }
+
+    pub(super) fn get_raw(&self) -> &dx::Fence {
+        &self.fence
+    }
+
+    pub fn get_completed_value(&self) -> u64 {
+        self.fence.get_completed_value()
+    }
+
+    pub fn set_event_on_completion(&self, value: u64, event: dx::Event) {
+        self.fence.set_event_on_completion(value, event).unwrap();
+    }
+
+    pub fn inc_value(&self) -> u64 {
+        self.value
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            + 1
+    }
+
+    pub fn get_current_value(&self) -> u64 {
+        self.value.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 

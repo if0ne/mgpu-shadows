@@ -12,9 +12,7 @@ use parking_lot::Mutex;
 
 use crate::graphics::{
     command_queue::WorkerType,
-    descriptor_heap::{
-        ViewType, DsvView, GpuView, RtvView, SrvView, UavView,
-    },
+    descriptor_heap::{DsvView, GpuView, RtvView, SrvView, UavView, ViewType},
     device::Device,
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
     utils::TextureCopyableFootprints,
@@ -23,8 +21,8 @@ use crate::graphics::{
 
 use super::{
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc, ResourceStates, ShareableImage,
-    ShareableImageDesc, SubresourceIndex, ImageResource, ImageResourceDesc, TextureUsage,
+    GpuOnlyDescriptorAccess, ImageResource, ImageResourceDesc, NoGpuAccess, Resource, ResourceDesc,
+    ResourceStates, ShareableImage, ShareableImageDesc, SubresourceIndex, TextureUsage,
 };
 
 #[derive(Clone, Debug)]
@@ -104,10 +102,7 @@ impl Image {
 
 // TODO: Desc validation
 impl Image {
-    pub fn rtv(
-        &self,
-        desc: Option<ImageViewDesc<RtvView>>,
-    ) -> GpuView<RtvView> {
+    pub fn rtv(&self, desc: Option<ImageViewDesc<RtvView>>) -> GpuView<RtvView> {
         match desc {
             Some(mut desc) => {
                 if desc.format.is_none() {
@@ -134,10 +129,7 @@ impl Image {
         }
     }
 
-    pub fn dsv(
-        &self,
-        desc: Option<ImageViewDesc<DsvView>>,
-    ) -> GpuView<DsvView> {
+    pub fn dsv(&self, desc: Option<ImageViewDesc<DsvView>>) -> GpuView<DsvView> {
         match desc {
             Some(mut desc) => {
                 if desc.format.is_none() {

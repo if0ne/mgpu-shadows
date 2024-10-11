@@ -3,8 +3,8 @@ use super::{
     command_queue::{Graphics, WorkerType},
     device::Device,
     resources::{
-        BufferResource, IndexBuffer, IndexBufferType, ResourceStates, SharedResource,
-        SubresourceIndex, Image, ImageResource, VertexBuffer,
+        BufferResource, Image, ImageResource, IndexBuffer, IndexBufferType, ResourceStates,
+        SharedResource, SubresourceIndex, VertexBuffer,
     },
 };
 
