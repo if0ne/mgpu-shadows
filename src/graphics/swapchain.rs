@@ -6,7 +6,6 @@ use super::{
     command_queue::{CommandQueue, Graphics},
     descriptor_heap::{DescriptorAllocator, DsvHeapView, ResourceDescriptor, RtvHeapView, SrvView},
     device::Device,
-    fence::{Fence, LocalFence},
     resources::{ResourceStates, Texture, TextureDesc, TextureUsage},
 };
 
@@ -14,7 +13,7 @@ use super::{
 pub struct Swapchain {
     raw: dx::Swapchain3,
     device: Device,
-    queue: CommandQueue<Graphics, LocalFence>,
+    queue: CommandQueue<Graphics>,
     descriptor_allocator: DescriptorAllocator,
 
     images: Vec<SwapchainImage>,
@@ -27,7 +26,7 @@ pub struct Swapchain {
 impl Swapchain {
     pub(super) fn inner_new(
         device: Device,
-        queue: CommandQueue<Graphics, LocalFence>,
+        queue: CommandQueue<Graphics>,
         descriptor_allocator: DescriptorAllocator,
         hwnd: NonZero<isize>,
         desc: SwapchainDesc,

@@ -69,15 +69,15 @@ impl Device {
 }
 
 impl Device {
-    pub fn create_graphics_command_queue<F: Fence>(&self, fence: F) -> CommandQueue<Graphics, F> {
+    pub fn create_graphics_command_queue(&self, fence: Fence) -> CommandQueue<Graphics> {
         CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::direct())
     }
 
-    pub fn create_compute_command_queue<F: Fence>(&self, fence: F) -> CommandQueue<Compute, F> {
+    pub fn create_compute_command_queue(&self, fence: Fence) -> CommandQueue<Compute> {
         CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::compute())
     }
 
-    pub fn create_transfer_command_queue<F: Fence>(&self, fence: F) -> CommandQueue<Transfer, F> {
+    pub fn create_transfer_command_queue(&self, fence: Fence) -> CommandQueue<Transfer> {
         CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::copy())
     }
 
@@ -175,7 +175,7 @@ impl Device {
 
     pub fn create_swapchain(
         &self,
-        queue: CommandQueue<Graphics, LocalFence>,
+        queue: CommandQueue<Graphics>,
         descriptor_allocator: DescriptorAllocator,
         hwnd: NonZero<isize>,
         desc: SwapchainDesc,

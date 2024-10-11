@@ -1,9 +1,14 @@
 use std::num::NonZero;
 
 use mgpu_shadows::graphics::{
-    command_queue::{Graphics, Transfer}, device::Device, heaps::MemoryHeapType, query::{QueryResolver, TimestampQuery}, resources::{
+    command_queue::{Graphics, Transfer},
+    device::Device,
+    heaps::MemoryHeapType,
+    query::{QueryResolver, TimestampQuery},
+    resources::{
         GpuOnlyDescriptorAccess, ResourceStates, SharedResource, Texture, TextureDesc, TextureUsage,
-    }, swapchain::Swapchain
+    },
+    swapchain::Swapchain,
 };
 use oxidx::dx::{
     create_debug, create_factory4, Debug, Factory4, FactoryCreationFlags, Format, IDebug,

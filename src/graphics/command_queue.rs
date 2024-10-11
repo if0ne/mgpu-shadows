@@ -30,10 +30,10 @@ impl WorkerType for Transfer {
 }
 
 #[derive(Clone, Debug)]
-pub struct CommandQueue<T: WorkerType, F: Fence>(Arc<CommandQueueInner<T, F>>);
+pub struct CommandQueue<T: WorkerType>(Arc<CommandQueueInner<T>>);
 
-impl<T: WorkerType, F: Fence> Deref for CommandQueue<T, F> {
-    type Target = CommandQueueInner<T, F>;
+impl<T: WorkerType> Deref for CommandQueue<T> {
+    type Target = CommandQueueInner<T>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -41,11 +41,11 @@ impl<T: WorkerType, F: Fence> Deref for CommandQueue<T, F> {
 }
 
 #[derive(Debug)]
-pub struct CommandQueueInner<T: WorkerType, F: Fence> {
+pub struct CommandQueueInner<T: WorkerType> {
     device: Device,
 
     pub(super) raw: Mutex<dx::CommandQueue>,
-    pub(super) fence: F,
+    pub(super) fence: Fence,
 
     cmd_allocators: Mutex<VecDeque<CommandAllocator<T>>>,
     cmd_list: Mutex<Vec<dx::GraphicsCommandList>>,
@@ -58,8 +58,8 @@ pub struct CommandQueueInner<T: WorkerType, F: Fence> {
     _marker: PhantomData<T>,
 }
 
-impl<T: WorkerType, F: Fence> CommandQueue<T, F> {
-    pub(super) fn inner_new(device: Device, fence: F, desc: &dx::CommandQueueDesc) -> Self {
+impl<T: WorkerType> CommandQueue<T> {
+    pub(super) fn inner_new(device: Device, fence: Fence, desc: &dx::CommandQueueDesc) -> Self {
         let queue: dx::CommandQueue = device.raw.create_command_queue(desc).unwrap();
 
         let cmd_allocators = (0..3)
@@ -93,7 +93,7 @@ impl<T: WorkerType, F: Fence> CommandQueue<T, F> {
     }
 }
 
-impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
+impl<T: WorkerType> CommandQueueInner<T> {
     fn signal(&self) -> u64 {
         let value = self.fence.inc_value();
         self.raw.lock().signal(self.fence.get_raw(), value).unwrap();
@@ -105,7 +105,7 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
     }
 }
 
-impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
+impl<T: WorkerType> CommandQueueInner<T> {
     pub fn push_worker(&self, fiber: WorkerThread<T>) {
         fiber.list.close().unwrap();
         self.temp_buffer.lock().push(Some(fiber.list.clone()));
@@ -123,14 +123,14 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
         }
     }
 
-    pub fn wait_other_queue_on_gpu<OT: WorkerType, OF: Fence>(&self, queue: &CommandQueue<OT, OF>) {
+    pub fn wait_other_queue_on_gpu<OT: WorkerType>(&self, queue: &CommandQueue<OT>) {
         self.raw
             .lock()
             .wait(queue.fence.get_raw(), queue.fence.get_current_value())
             .unwrap();
     }
 
-    pub fn wait_fence_gpu<OF: Fence>(&self, fence: &OF) {
+    pub fn wait_fence_gpu(&self, fence: &Fence) {
         self.raw
             .lock()
             .wait(fence.get_raw(), fence.get_current_value())
@@ -196,13 +196,11 @@ impl<T: WorkerType, F: Fence> CommandQueueInner<T, F> {
 #[cfg(test)]
 #[allow(unused)]
 mod tests {
-    use super::super::fence::LocalFence;
-
     use super::{CommandQueue, Compute, Graphics, Transfer};
 
     const fn is_send_sync<T: Send + Sync>() {}
 
-    const _: () = is_send_sync::<CommandQueue<Graphics, LocalFence>>();
-    const _: () = is_send_sync::<CommandQueue<Compute, LocalFence>>();
-    const _: () = is_send_sync::<CommandQueue<Transfer, LocalFence>>();
+    const _: () = is_send_sync::<CommandQueue<Graphics>>();
+    const _: () = is_send_sync::<CommandQueue<Compute>>();
+    const _: () = is_send_sync::<CommandQueue<Transfer>>();
 }

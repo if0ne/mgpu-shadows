@@ -4,37 +4,56 @@ use oxidx::dx::{self, IDevice, IFence};
 
 use super::device::Device;
 
-pub trait Fence {
-    fn get_completed_value(&self) -> u64;
-    fn set_event_on_completion(&self, value: u64, event: dx::Event);
-
-    fn inc_value(&self) -> u64;
-    fn get_current_value(&self) -> u64;
-
-    fn get_raw(&self) -> &dx::Fence;
+#[derive(Debug, Clone)]
+pub enum Fence {
+    Local(LocalFence),
+    Shared(SharedFence),
 }
 
-impl Fence for LocalFence {
-    fn get_completed_value(&self) -> u64 {
-        self.raw.get_completed_value()
+impl Fence {
+    pub fn get_completed_value(&self) -> u64 {
+        match self {
+            Fence::Local(fence) => fence.raw.get_completed_value(),
+            Fence::Shared(fence) => fence.fence.get_completed_value(),
+        }
     }
 
-    fn set_event_on_completion(&self, value: u64, event: dx::Event) {
-        self.raw.set_event_on_completion(value, event).unwrap();
+    pub fn set_event_on_completion(&self, value: u64, event: dx::Event) {
+        match self {
+            Fence::Local(fence) => fence.raw.set_event_on_completion(value, event).unwrap(),
+            Fence::Shared(fence) => fence.fence.set_event_on_completion(value, event).unwrap(),
+        }
     }
 
-    fn inc_value(&self) -> u64 {
-        self.value
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-            + 1
+    pub fn inc_value(&self) -> u64 {
+        match self {
+            Fence::Local(fence) => {
+                fence
+                    .value
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                    + 1
+            }
+            Fence::Shared(fence) => {
+                fence
+                    .value
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                    + 1
+            }
+        }
     }
 
-    fn get_raw(&self) -> &dx::Fence {
-        &self.raw
+    pub fn get_current_value(&self) -> u64 {
+        match self {
+            Fence::Local(fence) => fence.value.load(std::sync::atomic::Ordering::Relaxed),
+            Fence::Shared(fence) => fence.value.load(std::sync::atomic::Ordering::Relaxed),
+        }
     }
 
-    fn get_current_value(&self) -> u64 {
-        self.value.load(std::sync::atomic::Ordering::Relaxed)
+    pub(super) fn get_raw(&self) -> &dx::Fence {
+        match self {
+            Fence::Local(fence) => &fence.raw,
+            Fence::Shared(fence) => &fence.fence,
+        }
     }
 }
 
@@ -52,6 +71,12 @@ impl LocalFence {
             raw: fence,
             value: Default::default(),
         }
+    }
+}
+
+impl From<LocalFence> for Fence {
+    fn from(value: LocalFence) -> Self {
+        Fence::Local(value)
     }
 }
 
@@ -98,26 +123,8 @@ impl SharedFence {
     }
 }
 
-impl Fence for SharedFence {
-    fn get_completed_value(&self) -> u64 {
-        self.fence.get_completed_value()
-    }
-
-    fn set_event_on_completion(&self, value: u64, event: dx::Event) {
-        self.fence.set_event_on_completion(value, event).unwrap()
-    }
-
-    fn inc_value(&self) -> u64 {
-        self.value
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-            + 1
-    }
-
-    fn get_raw(&self) -> &dx::Fence {
-        &self.fence
-    }
-
-    fn get_current_value(&self) -> u64 {
-        self.value.load(std::sync::atomic::Ordering::Relaxed)
+impl From<SharedFence> for Fence {
+    fn from(value: SharedFence) -> Self {
+        Fence::Shared(value)
     }
 }
