@@ -54,12 +54,10 @@ pub trait BufferResource: Resource<Desc: BufferResourceDesc> {
     fn get_barrier(&self, state: ResourceStates) -> Option<dx::ResourceBarrier<'_>>;
 }
 pub trait ImageResource: Resource<Desc: ImageResourceDesc> {
-    type SubIndex;
-
     fn get_barrier(
         &self,
         state: ResourceStates,
-        subresource: Option<Self::SubIndex>,
+        subresource: Option<SubresourceIndex>,
     ) -> Option<dx::ResourceBarrier<'_>>;
 }
 

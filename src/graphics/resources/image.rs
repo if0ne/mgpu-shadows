@@ -9,6 +9,7 @@ use std::{
 use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IGraphicsCommandListExt};
 use parking_lot::Mutex;
+use smallvec::SmallVec;
 
 use crate::graphics::{
     command_queue::WorkerType,
@@ -26,10 +27,10 @@ use super::{
 };
 
 #[derive(Clone, Debug)]
-pub struct Image(Arc<TextureInner>);
+pub struct Image(Arc<ImageInner>);
 
 impl Deref for Image {
-    type Target = TextureInner;
+    type Target = ImageInner;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -37,7 +38,7 @@ impl Deref for Image {
 }
 
 #[derive(Debug)]
-pub struct TextureInner {
+pub struct ImageInner {
     raw: dx::Resource,
     desc: ImageDesc,
     state: Vec<Atomic<ResourceStates>>,
@@ -80,7 +81,7 @@ impl Image {
             ResourceStates::GenericRead,
         );
 
-        Self(Arc::new(TextureInner {
+        Self(Arc::new(ImageInner {
             raw: resource,
             desc,
             state,
@@ -227,7 +228,7 @@ impl Image {
     }
 }
 
-impl Drop for TextureInner {
+impl Drop for ImageInner {
     fn drop(&mut self) {
         if let Some(rtv) = self.rtv.get() {
             self.access.0.remove_rtv(*rtv);
@@ -244,6 +245,23 @@ impl Drop for TextureInner {
         if let Some(uav) = self.uav.get() {
             self.access.0.remove_uav(*uav);
         }
+
+        self.cached_rtv
+            .lock()
+            .iter()
+            .for_each(|(_, handle)| self.access.0.remove_rtv(handle));
+        self.cached_dsv
+            .lock()
+            .iter()
+            .for_each(|(_, handle)| self.access.0.remove_dsv(handle));
+        self.cached_srv
+            .lock()
+            .iter()
+            .for_each(|(_, handle)| self.access.0.remove_srv(handle));
+        self.cached_uav
+            .lock()
+            .iter()
+            .for_each(|(_, handle)| self.access.0.remove_uav(handle));
     }
 }
 
@@ -297,8 +315,6 @@ impl Resource for Image {
 }
 
 impl ImageResource for Image {
-    type SubIndex = SubresourceIndex;
-
     fn get_barrier(
         &self,
         state: ResourceStates,
@@ -310,17 +326,37 @@ impl ImageResource for Image {
             None
         };
 
-        let old = self.state[index].swap(state, std::sync::atomic::Ordering::Relaxed);
+        if let Some(index) = index {
+            let old = self.state[index].swap(state, std::sync::atomic::Ordering::Relaxed);
 
-        if old != state {
-            Some(dx::ResourceBarrier::transition(
-                self.get_raw(),
-                old.into(),
-                state.into(),
-                index,
-            ))
+            if old != state {
+                Some(dx::ResourceBarrier::transition(
+                    self.get_raw(),
+                    old.into(),
+                    state.into(),
+                    Some(index),
+                ))
+            } else {
+                None
+            }
         } else {
-            None
+            //TODO: Return smallvec?
+            let old = self.state[0].swap(state, std::sync::atomic::Ordering::Relaxed);
+            self.state
+                .iter()
+                .skip(1)
+                .for_each(|s| s.store(state, std::sync::atomic::Ordering::Relaxed));
+
+            if old != state {
+                Some(dx::ResourceBarrier::transition(
+                    self.get_raw(),
+                    old.into(),
+                    state.into(),
+                    None,
+                ))
+            } else {
+                None
+            }
         }
     }
 }
