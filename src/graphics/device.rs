@@ -7,7 +7,6 @@ use oxidx::dx::{self, IAdapter3, IDevice};
 
 use super::{
     commands::{CommandAllocator, CommandQueue, Compute, Graphics, Transfer, WorkerType},
-    descriptor_heap::{CbvSrvUavView, DescriptorAllocator, DescriptorHeap, DsvView, RtvView},
     fence::{Fence, LocalFence, SharedFence},
     heaps::MemoryHeap,
     query::{QueryHeap, QueryHeapType},
@@ -17,7 +16,7 @@ use super::{
     },
     swapchain::{Swapchain, SwapchainDesc},
     types::MemoryHeapType,
-    utils::{BufferCopyableFootprints, MipInfo, TextureCopyableFootprints},
+    utils::{BufferCopyableFootprints, MipInfo, TextureCopyableFootprints}, views::ViewAllocator,
 };
 
 #[derive(Clone, Debug)]
@@ -79,29 +78,14 @@ impl Device {
         CommandQueue::inner_new(self.clone(), fence)
     }
 
-    pub fn create_rtv_descriptor_heap(&self, capacity: usize) -> DescriptorHeap<RtvView> {
-        DescriptorHeap::inner_new(self.clone(), capacity)
-    }
-
-    pub fn create_dsv_descriptor_heap(&self, capacity: usize) -> DescriptorHeap<DsvView> {
-        DescriptorHeap::inner_new(self.clone(), capacity)
-    }
-
-    pub fn create_cbv_srv_uav_descriptor_heap(
-        &self,
-        capacity: usize,
-    ) -> DescriptorHeap<CbvSrvUavView> {
-        DescriptorHeap::inner_new(self.clone(), capacity)
-    }
-
     pub fn create_descriptor_allocator(
         &self,
         rtv_size: usize,
         dsv_size: usize,
         cbv_srv_uav_size: usize,
         sampler_size: usize,
-    ) -> DescriptorAllocator {
-        DescriptorAllocator::inner_new(self, rtv_size, dsv_size, cbv_srv_uav_size, sampler_size)
+    ) -> ViewAllocator {
+        ViewAllocator::inner_new(self, rtv_size, dsv_size, cbv_srv_uav_size, sampler_size)
     }
 
     pub fn create_fence(&self) -> LocalFence {
@@ -174,7 +158,7 @@ impl Device {
     pub fn create_swapchain(
         &self,
         queue: CommandQueue<Graphics>,
-        descriptor_allocator: DescriptorAllocator,
+        descriptor_allocator: ViewAllocator,
         hwnd: NonZero<isize>,
         desc: SwapchainDesc,
     ) -> Swapchain {

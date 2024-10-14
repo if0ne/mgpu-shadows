@@ -1,148 +1,13 @@
-use std::{marker::PhantomData, ops::Deref, sync::Arc};
+use std::marker::PhantomData;
 
-use oxidx::dx::{self, IDescriptorHeap, IDevice};
-use parking_lot::Mutex;
+use oxidx::dx;
 
-use super::device::Device;
+use crate::graphics::device::Device;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GpuView<T: ViewType> {
-    index: usize,
-    gpu: dx::GpuDescriptorHandle,
-    cpu: dx::CpuDescriptorHandle,
-    _marker: PhantomData<T>,
-}
-
-impl<T: ViewType> GpuView<T> {
-    pub fn gpu(&self) -> dx::GpuDescriptorHandle {
-        self.gpu
-    }
-
-    pub fn cpu(&self) -> dx::CpuDescriptorHandle {
-        self.cpu
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct DescriptorAllocator(Arc<DescriptorAllocatorInner>);
-
-impl DescriptorAllocator {
-    pub(super) fn inner_new(
-        device: &Device,
-        rtv_size: usize,
-        dsv_size: usize,
-        cbv_srv_uav_size: usize,
-        sampler_size: usize,
-    ) -> Self {
-        Self(Arc::new(DescriptorAllocatorInner {
-            rtv: Mutex::new(DescriptorHeap::inner_new(device.clone(), rtv_size)),
-            dsv: Mutex::new(DescriptorHeap::inner_new(device.clone(), dsv_size)),
-            cbv_srv_uav: Mutex::new(DescriptorHeap::inner_new(device.clone(), cbv_srv_uav_size)),
-            sampler: Mutex::new(DescriptorHeap::inner_new(device.clone(), sampler_size)),
-        }))
-    }
-
-    pub fn remove_rtv(&self, handle: GpuView<RtvView>) {
-        self.rtv.lock().remove(handle)
-    }
-
-    pub fn remove_dsv(&self, handle: GpuView<DsvView>) {
-        self.dsv.lock().remove(handle)
-    }
-
-    pub fn remove_cbv(&self, handle: GpuView<CbvView>) {
-        self.cbv_srv_uav.lock().remove(GpuView {
-            index: handle.index,
-            gpu: handle.gpu,
-            cpu: handle.cpu,
-            _marker: PhantomData,
-        })
-    }
-
-    pub fn remove_srv(&self, handle: GpuView<SrvView>) {
-        self.cbv_srv_uav.lock().remove(GpuView {
-            index: handle.index,
-            gpu: handle.gpu,
-            cpu: handle.cpu,
-            _marker: PhantomData,
-        })
-    }
-
-    pub fn remove_uav(&self, handle: GpuView<UavView>) {
-        self.cbv_srv_uav.lock().remove(GpuView {
-            index: handle.index,
-            gpu: handle.gpu,
-            cpu: handle.cpu,
-            _marker: PhantomData,
-        })
-    }
-
-    pub fn remove_sampler(&self, handle: GpuView<SamplerView>) {
-        self.sampler.lock().remove(handle)
-    }
-
-    pub fn push_rtv(
-        &self,
-        resource: &dx::Resource,
-        desc: Option<&dx::RenderTargetViewDesc>,
-    ) -> GpuView<RtvView> {
-        self.rtv.lock().push(resource, desc)
-    }
-
-    pub fn push_dsv(
-        &self,
-        resource: &dx::Resource,
-        desc: Option<&dx::DepthStencilViewDesc>,
-    ) -> GpuView<DsvView> {
-        self.dsv.lock().push(resource, desc)
-    }
-
-    pub fn push_sampler(&self, desc: &dx::SamplerDesc) -> GpuView<SamplerView> {
-        self.sampler.lock().push(desc)
-    }
-
-    pub fn push_cbv(&self, desc: Option<&dx::ConstantBufferViewDesc>) -> GpuView<CbvView> {
-        self.cbv_srv_uav.lock().push_cbv(desc)
-    }
-
-    pub fn push_srv(
-        &self,
-        resource: &dx::Resource,
-        desc: Option<&dx::ShaderResourceViewDesc>,
-    ) -> GpuView<SrvView> {
-        self.cbv_srv_uav.lock().push_srv(resource, desc)
-    }
-
-    pub fn push_uav(
-        &self,
-        resource: &dx::Resource,
-        counter_resource: Option<&dx::Resource>,
-        desc: Option<&dx::UnorderedAccessViewDesc>,
-    ) -> GpuView<UavView> {
-        self.cbv_srv_uav
-            .lock()
-            .push_uav(resource, counter_resource, desc)
-    }
-}
-
-impl Deref for DescriptorAllocator {
-    type Target = DescriptorAllocatorInner;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+use super::{CbvSrvUavView, CbvView, DsvView, GpuView, RtvView, SamplerView, SrvView, UavView, ViewType};
 
 #[derive(Debug)]
-pub struct DescriptorAllocatorInner {
-    rtv: Mutex<DescriptorHeap<RtvView>>,
-    dsv: Mutex<DescriptorHeap<DsvView>>,
-    cbv_srv_uav: Mutex<DescriptorHeap<CbvSrvUavView>>,
-    sampler: Mutex<DescriptorHeap<SamplerView>>,
-}
-
-#[derive(Debug)]
-pub struct DescriptorHeap<T: ViewType> {
+pub struct ViewHeap<T: ViewType> {
     device: Device,
     raw: dx::DescriptorHeap,
     free_list: Vec<usize>,
@@ -154,7 +19,7 @@ pub struct DescriptorHeap<T: ViewType> {
     _marker: PhantomData<T>,
 }
 
-impl<T: ViewType> DescriptorHeap<T> {
+impl<T: ViewType> ViewHeap<T> {
     pub(super) fn inner_new(device: Device, capacity: usize) -> Self {
         let inner: dx::DescriptorHeap = device
             .raw
@@ -192,7 +57,9 @@ impl<T: ViewType> DescriptorHeap<T> {
         self.capacity = new_capacity;
         self.raw = new_inner;
     }
+}
 
+impl<T: ViewType> ViewHeap<T> {
     pub fn remove(&mut self, handle: GpuView<T>) {
         if handle.index >= self.size {
             panic!(
@@ -208,7 +75,7 @@ impl<T: ViewType> DescriptorHeap<T> {
     }
 }
 
-impl DescriptorHeap<RtvView> {
+impl ViewHeap<RtvView> {
     pub fn push(
         &mut self,
         resource: &dx::Resource,
@@ -247,7 +114,7 @@ impl DescriptorHeap<RtvView> {
     }
 }
 
-impl DescriptorHeap<DsvView> {
+impl ViewHeap<DsvView> {
     pub fn push(
         &mut self,
         resource: &dx::Resource,
@@ -286,7 +153,7 @@ impl DescriptorHeap<DsvView> {
     }
 }
 
-impl DescriptorHeap<CbvSrvUavView> {
+impl ViewHeap<CbvSrvUavView> {
     pub fn push_cbv(&mut self, desc: Option<&dx::ConstantBufferViewDesc>) -> GpuView<CbvView> {
         let index = if let Some(free) = self.free_list.pop() {
             free
@@ -399,7 +266,7 @@ impl DescriptorHeap<CbvSrvUavView> {
     }
 }
 
-impl DescriptorHeap<SamplerView> {
+impl ViewHeap<SamplerView> {
     pub fn push(&mut self, desc: &dx::SamplerDesc) -> GpuView<SamplerView> {
         let index = if let Some(free) = self.free_list.pop() {
             free
@@ -429,81 +296,5 @@ impl DescriptorHeap<SamplerView> {
         self.size += 1;
 
         handle
-    }
-}
-
-pub(super) trait ViewType {
-    const RAW_TYPE: dx::DescriptorHeapType;
-
-    fn get_desc(num: usize) -> dx::DescriptorHeapDesc;
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct RtvView;
-impl ViewType for RtvView {
-    const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Rtv;
-
-    fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
-        dx::DescriptorHeapDesc::rtv(num)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct DsvView;
-impl ViewType for DsvView {
-    const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Dsv;
-
-    fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
-        dx::DescriptorHeapDesc::dsv(num)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CbvSrvUavView;
-impl ViewType for CbvSrvUavView {
-    const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
-
-    fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
-        dx::DescriptorHeapDesc::cbr_srv_uav(num)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CbvView;
-impl ViewType for CbvView {
-    const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
-
-    fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
-        dx::DescriptorHeapDesc::cbr_srv_uav(num)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SrvView;
-impl ViewType for SrvView {
-    const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
-
-    fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
-        dx::DescriptorHeapDesc::cbr_srv_uav(num)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct UavView;
-impl ViewType for UavView {
-    const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::CbvSrvUav;
-
-    fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
-        dx::DescriptorHeapDesc::cbr_srv_uav(num)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SamplerView;
-impl ViewType for SamplerView {
-    const RAW_TYPE: dx::DescriptorHeapType = dx::DescriptorHeapType::Sampler;
-
-    fn get_desc(num: usize) -> dx::DescriptorHeapDesc {
-        dx::DescriptorHeapDesc::sampler(num)
     }
 }

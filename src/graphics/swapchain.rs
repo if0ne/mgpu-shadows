@@ -4,9 +4,8 @@ use oxidx::dx::{self, IFactory4, ISwapchain1, ISwapchain3, OUTPUT_NONE};
 
 use super::{
     commands::{CommandQueue, Graphics},
-    descriptor_heap::{DescriptorAllocator, DsvView, GpuView, RtvView, SrvView},
     device::Device,
-    resources::{Image, ImageDesc, ResourceStates, TextureUsage},
+    resources::{Image, ImageDesc, ResourceStates, TextureUsage}, views::{DsvView, GpuView, RtvView, SrvView, ViewAllocator},
 };
 
 #[derive(Debug)]
@@ -14,7 +13,7 @@ pub struct Swapchain {
     raw: dx::Swapchain3,
     device: Device,
     queue: CommandQueue<Graphics>,
-    descriptor_allocator: DescriptorAllocator,
+    descriptor_allocator: ViewAllocator,
 
     images: Vec<SwapchainImage>,
     depth: Image,
@@ -27,7 +26,7 @@ impl Swapchain {
     pub(super) fn inner_new(
         device: Device,
         queue: CommandQueue<Graphics>,
-        descriptor_allocator: DescriptorAllocator,
+        descriptor_allocator: ViewAllocator,
         hwnd: NonZero<isize>,
         desc: SwapchainDesc,
     ) -> Self {
