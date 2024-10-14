@@ -2,7 +2,10 @@ use std::ops::Deref;
 
 use super::{
     command_allocator::CommandAllocator,
-    command_queue::{Compute, Graphics, Transfer, WorkerType},
+    worker_type::{Compute, Graphics, Transfer, WorkerType},
+};
+
+use crate::graphics::{
     device::Device,
     resources::{
         BufferResource, Image, ImageResource, IndexBuffer, IndexBufferType, ResourceStates,
@@ -15,10 +18,31 @@ use smallvec::SmallVec;
 
 #[derive(Debug)]
 pub struct WorkerThread<T: WorkerType> {
-    pub(super) device: Device,
-    pub(super) frequency: f64,
-    pub(super) allocator: CommandAllocator<T>,
-    pub(super) list: dx::GraphicsCommandList,
+    pub(crate) device: Device,
+    pub(crate) frequency: f64,
+    pub(crate) allocator: CommandAllocator<T>,
+    pub(crate) list: dx::GraphicsCommandList,
+}
+
+impl<T: WorkerType> WorkerThread<T> {
+    pub(crate) fn inner_new(
+        device: Device,
+        allocator: CommandAllocator<T>,
+        r#type: dx::CommandListType,
+        frequency: f64,
+    ) -> Self {
+        let list = device
+            .raw
+            .create_command_list(0, r#type, &allocator.raw, dx::PSO_NONE)
+            .unwrap();
+
+        Self {
+            device,
+            list,
+            allocator,
+            frequency,
+        }
+    }
 }
 
 impl Deref for WorkerThread<Graphics> {
@@ -37,6 +61,13 @@ impl Deref for WorkerThread<Compute> {
     }
 }
 
+impl<T: WorkerType> WorkerThread<T> {
+    // TODO: Batched barrier
+    pub fn barrier(&self, barriers: &[dx::ResourceBarrier<'_>]) {
+        self.list.resource_barrier(barriers);
+    }
+}
+
 impl WorkerThread<Graphics> {
     pub fn clear_rt(&self, handle: dx::CpuDescriptorHandle, color: [f32; 4]) {
         self.list.clear_render_target_view(handle, color, &[]);
@@ -52,32 +83,6 @@ impl WorkerThread<Graphics> {
 
     pub fn bind_index_buffer(&self, view: dx::IndexBufferView) {
         self.list.ia_set_index_buffer(Some(&view));
-    }
-}
-
-impl<T: WorkerType> WorkerThread<T> {
-    fn inner_new(
-        device: Device,
-        allocator: CommandAllocator<T>,
-        r#type: dx::CommandListType,
-        frequency: f64,
-    ) -> Self {
-        let list = device
-            .raw
-            .create_command_list(0, r#type, &allocator.raw, dx::PSO_NONE)
-            .unwrap();
-
-        Self {
-            device,
-            list,
-            allocator,
-            frequency,
-        }
-    }
-
-    // TODO: Batched barrier
-    pub fn barrier(&self, barriers: &[dx::ResourceBarrier<'_>]) {
-        self.list.resource_barrier(barriers);
     }
 }
 

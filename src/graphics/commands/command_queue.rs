@@ -3,49 +3,19 @@ use std::{collections::VecDeque, marker::PhantomData, ops::Deref, sync::Arc};
 use oxidx::dx::{self, ICommandQueue, IDevice, IGraphicsCommandList, PSO_NONE};
 use parking_lot::Mutex;
 
-use super::{
-    command_allocator::CommandAllocator, device::Device, fence::Fence, worker_thread::WorkerThread,
-};
+use crate::graphics::{device::Device, fence::Fence};
 
-pub trait WorkerType {
-    const RAW_TYPE: dx::CommandListType;
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Graphics;
-impl WorkerType for Graphics {
-    const RAW_TYPE: dx::CommandListType = dx::CommandListType::Direct;
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Compute;
-impl WorkerType for Compute {
-    const RAW_TYPE: dx::CommandListType = dx::CommandListType::Compute;
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Transfer;
-impl WorkerType for Transfer {
-    const RAW_TYPE: dx::CommandListType = dx::CommandListType::Copy;
-}
+use super::{command_allocator::CommandAllocator, worker_type::WorkerType, WorkerThread};
 
 #[derive(Clone, Debug)]
 pub struct CommandQueue<T: WorkerType>(Arc<CommandQueueInner<T>>);
-
-impl<T: WorkerType> Deref for CommandQueue<T> {
-    type Target = CommandQueueInner<T>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 #[derive(Debug)]
 pub struct CommandQueueInner<T: WorkerType> {
     device: Device,
 
-    pub(super) raw: Mutex<dx::CommandQueue>,
-    pub(super) fence: Fence,
+    pub(crate) raw: Mutex<dx::CommandQueue>,
+    pub(crate) fence: Fence,
 
     cmd_allocators: Mutex<VecDeque<CommandAllocator<T>>>,
     cmd_list: Mutex<Vec<dx::GraphicsCommandList>>,
@@ -59,8 +29,10 @@ pub struct CommandQueueInner<T: WorkerType> {
 }
 
 impl<T: WorkerType> CommandQueue<T> {
-    pub(super) fn inner_new(device: Device, fence: Fence, desc: &dx::CommandQueueDesc) -> Self {
-        let queue: dx::CommandQueue = device.raw.create_command_queue(desc).unwrap();
+    pub(crate) fn inner_new(device: Device, fence: Fence) -> Self {
+        let desc = T::queue_desc();
+
+        let queue: dx::CommandQueue = device.raw.create_command_queue(&desc).unwrap();
 
         let cmd_allocators = (0..3)
             .map(|_| device.create_command_allocator())
@@ -68,7 +40,7 @@ impl<T: WorkerType> CommandQueue<T> {
 
         let cmd_list: Vec<dx::GraphicsCommandList> = vec![device
             .raw
-            .create_command_list(0, desc.r#type(), &cmd_allocators[0].raw, PSO_NONE)
+            .create_command_list(0, T::RAW_TYPE, &cmd_allocators[0].raw, PSO_NONE)
             .unwrap()];
 
         cmd_list[0].close().unwrap();
@@ -93,23 +65,11 @@ impl<T: WorkerType> CommandQueue<T> {
     }
 }
 
-impl<T: WorkerType> CommandQueueInner<T> {
-    fn signal(&self) -> u64 {
-        let value = self.fence.inc_value();
-        self.raw.lock().signal(self.fence.get_raw(), value).unwrap();
-        value
-    }
-
-    fn is_fence_complete(&self, value: u64) -> bool {
-        self.fence.get_completed_value() >= value
-    }
-}
-
-impl<T: WorkerType> CommandQueueInner<T> {
-    pub fn push_worker(&self, fiber: WorkerThread<T>) {
-        fiber.list.close().unwrap();
-        self.temp_buffer.lock().push(Some(fiber.list.clone()));
-        self.pending_list.lock().push(fiber);
+impl<T: WorkerType> CommandQueue<T> {
+    pub fn push_worker(&self, worker: WorkerThread<T>) {
+        worker.list.close().unwrap();
+        self.temp_buffer.lock().push(Some(worker.list.clone()));
+        self.pending_list.lock().push(worker);
     }
 
     pub fn wait_on_cpu(&self, value: u64) {
@@ -193,10 +153,32 @@ impl<T: WorkerType> CommandQueueInner<T> {
     }
 }
 
+impl<T: WorkerType> CommandQueue<T> {
+    fn signal(&self) -> u64 {
+        let value = self.fence.inc_value();
+        self.raw.lock().signal(self.fence.get_raw(), value).unwrap();
+        value
+    }
+
+    fn is_fence_complete(&self, value: u64) -> bool {
+        self.fence.get_completed_value() >= value
+    }
+}
+
+impl<T: WorkerType> Deref for CommandQueue<T> {
+    type Target = CommandQueueInner<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[cfg(test)]
 #[allow(unused)]
 mod tests {
-    use super::{CommandQueue, Compute, Graphics, Transfer};
+    use crate::graphics::commands::worker_type::{Compute, Graphics, Transfer};
+
+    use super::CommandQueue;
 
     const fn is_send_sync<T: Send + Sync>() {}
 

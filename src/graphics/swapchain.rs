@@ -3,7 +3,7 @@ use std::{cell::Cell, num::NonZero};
 use oxidx::dx::{self, IFactory4, ISwapchain1, ISwapchain3, OUTPUT_NONE};
 
 use super::{
-    command_queue::{CommandQueue, Graphics},
+    commands::{CommandQueue, Graphics},
     descriptor_heap::{DescriptorAllocator, DsvView, GpuView, RtvView, SrvView},
     device::Device,
     resources::{Image, ImageDesc, ResourceStates, TextureUsage},

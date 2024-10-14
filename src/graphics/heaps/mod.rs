@@ -1,5 +1,5 @@
-mod heap;
 mod allocation;
+mod heap;
 
-pub use heap::*;
 pub use allocation::*;
+pub use heap::*;

@@ -10,10 +10,9 @@ use oxidx::dx::{self, IDevice, IGraphicsCommandList};
 use crate::graphics::resources::Resource;
 
 use super::{
-    command_queue::{Compute, Graphics, Transfer, WorkerType},
+    commands::{Compute, Graphics, Transfer, WorkerThread, WorkerType},
     device::Device,
     resources::{NoGpuAccess, ResourceStates, StagingBuffer, StagingBufferDesc},
-    worker_thread::WorkerThread,
 };
 
 #[derive(Clone, Debug)]

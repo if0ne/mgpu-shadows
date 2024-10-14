@@ -6,17 +6,17 @@ use std::{num::NonZero, ops::Deref, sync::Arc};
 use oxidx::dx::{self, IAdapter3, IDevice};
 
 use super::{
-    command_allocator::CommandAllocator,
-    command_queue::{CommandQueue, Compute, Graphics, Transfer, WorkerType},
+    commands::{CommandAllocator, CommandQueue, Compute, Graphics, Transfer, WorkerType},
     descriptor_heap::{CbvSrvUavView, DescriptorAllocator, DescriptorHeap, DsvView, RtvView},
     fence::{Fence, LocalFence, SharedFence},
-    heaps::{MemoryHeap, MemoryHeapType},
+    heaps::MemoryHeap,
     query::{QueryHeap, QueryHeapType},
     resources::{
         BufferResource, BufferResourceDesc, ImageResource, ImageResourceDesc, Resource,
         ResourceStates, ShareableBuffer, ShareableImage, SharedResource,
     },
     swapchain::{Swapchain, SwapchainDesc},
+    types::MemoryHeapType,
     utils::{BufferCopyableFootprints, MipInfo, TextureCopyableFootprints},
 };
 
@@ -68,15 +68,15 @@ impl Device {
 
 impl Device {
     pub fn create_graphics_command_queue(&self, fence: Fence) -> CommandQueue<Graphics> {
-        CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::direct())
+        CommandQueue::inner_new(self.clone(), fence)
     }
 
     pub fn create_compute_command_queue(&self, fence: Fence) -> CommandQueue<Compute> {
-        CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::compute())
+        CommandQueue::inner_new(self.clone(), fence)
     }
 
     pub fn create_transfer_command_queue(&self, fence: Fence) -> CommandQueue<Transfer> {
-        CommandQueue::inner_new(self.clone(), fence, &dx::CommandQueueDesc::copy())
+        CommandQueue::inner_new(self.clone(), fence)
     }
 
     pub fn create_rtv_descriptor_heap(&self, capacity: usize) -> DescriptorHeap<RtvView> {

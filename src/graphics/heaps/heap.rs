@@ -3,13 +3,22 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::graphics::{
     device::Device,
-    resources::{BufferResource, ImageResource, ImageResourceDesc, ResourceStates}, types::MemoryHeapType,
+    resources::{BufferResource, ImageResource, ImageResourceDesc, ResourceStates},
+    types::MemoryHeapType,
 };
 
 use super::Allocation;
 
 #[derive(Clone, Debug)]
 pub struct MemoryHeap(Arc<MemoryHeapInner>);
+
+#[derive(Debug)]
+pub struct MemoryHeapInner {
+    pub(crate) device: Device,
+    pub(crate) heap: dx::Heap,
+    pub(crate) size: usize,
+    pub(crate) mtype: MemoryHeapType,
+}
 
 impl MemoryHeap {
     pub(crate) fn inner_new(device: Device, size: usize, mtype: MemoryHeapType) -> Self {
@@ -126,12 +135,4 @@ impl Deref for MemoryHeap {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
-#[derive(Debug)]
-pub struct MemoryHeapInner {
-    pub(crate) device: Device,
-    pub(crate) heap: dx::Heap,
-    pub(crate) size: usize,
-    pub(crate) mtype: MemoryHeapType,
 }
