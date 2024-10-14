@@ -132,8 +132,15 @@ impl Atom for ResourceStates {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TextureUsage {
-    RenderTarget { color: Option<[f32; 4]> },
-    DepthTarget { color: Option<(f32, u8)>, srv: bool },
+    RenderTarget {
+        color: Option<[f32; 4]>,
+        srv: bool,
+        uav: bool,
+    },
+    DepthTarget {
+        color: Option<(f32, u8)>,
+        srv: bool,
+    },
     ShaderResource,
     Storage,
 }

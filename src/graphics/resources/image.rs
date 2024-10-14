@@ -104,8 +104,12 @@ impl Image {
 // TODO: Desc validation
 impl Image {
     pub fn rtv(&self, desc: Option<ImageViewDesc<RtvView>>) -> GpuView<RtvView> {
+        assert!(self.is_support_rtv());
+
         match desc {
             Some(mut desc) => {
+                assert!(self.is_array() || !desc.is_array());
+
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
                 }
@@ -131,8 +135,12 @@ impl Image {
     }
 
     pub fn dsv(&self, desc: Option<ImageViewDesc<DsvView>>) -> GpuView<DsvView> {
+        assert!(self.is_support_dsv());
+
         match desc {
             Some(mut desc) => {
+                assert!(self.is_array() || !desc.is_array());
+
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
                 }
@@ -158,8 +166,12 @@ impl Image {
     }
 
     pub fn srv(&self, desc: Option<ImageViewDesc<SrvView>>) -> GpuView<SrvView> {
+        assert!(self.is_support_srv());
+
         match desc {
             Some(mut desc) => {
+                assert!(self.is_array() || !desc.is_array());
+
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
                 }
@@ -185,8 +197,12 @@ impl Image {
     }
 
     pub fn uav(&self, desc: Option<ImageViewDesc<UavView>>) -> GpuView<UavView> {
+        assert!(self.is_support_uav());
+
         match desc {
             Some(mut desc) => {
+                assert!(self.is_array() || !desc.is_array());
+
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
                 }
@@ -209,6 +225,35 @@ impl Image {
                 handle
             }
         }
+    }
+
+    pub fn is_array(&self) -> bool {
+        self.desc.count != 1
+    }
+
+    pub fn is_support_rtv(&self) -> bool {
+        self.desc
+            .flags
+            .intersects(dx::ResourceFlags::AllowRenderTarget)
+    }
+
+    pub fn is_support_dsv(&self) -> bool {
+        self.desc
+            .flags
+            .intersects(dx::ResourceFlags::AllowDepthStencil)
+    }
+
+    pub fn is_support_uav(&self) -> bool {
+        self.desc
+            .flags
+            .intersects(dx::ResourceFlags::AllowUnorderedAccess)
+    }
+
+    pub fn is_support_srv(&self) -> bool {
+        !self
+            .desc
+            .flags
+            .intersects(dx::ResourceFlags::DenyShaderResource)
     }
 
     pub(in super::super) fn upload_data<WT: WorkerType>(
@@ -396,9 +441,16 @@ impl ImageDesc {
 
     pub fn with_usage(mut self, usage: TextureUsage) -> Self {
         match &usage {
-            TextureUsage::RenderTarget { .. } => {
-                self.flags =
-                    dx::ResourceFlags::AllowRenderTarget | dx::ResourceFlags::AllowUnorderedAccess
+            TextureUsage::RenderTarget { srv, uav, .. } => {
+                self.flags = dx::ResourceFlags::AllowRenderTarget;
+
+                if !srv {
+                    self.flags |= dx::ResourceFlags::DenyShaderResource;
+                }
+
+                if *uav {
+                    self.flags |= dx::ResourceFlags::AllowUnorderedAccess;
+                }
             }
             TextureUsage::DepthTarget { srv, .. } => {
                 self.flags = dx::ResourceFlags::AllowDepthStencil;
@@ -432,7 +484,7 @@ impl ResourceDesc for ImageDesc {}
 impl ImageResourceDesc for ImageDesc {
     fn clear_color(&self) -> Option<dx::ClearValue> {
         match &self.usage {
-            TextureUsage::RenderTarget { color } => {
+            TextureUsage::RenderTarget { color, .. } => {
                 color.map(|v| dx::ClearValue::color(self.format, v))
             }
             TextureUsage::DepthTarget { color, .. } => {
@@ -536,6 +588,10 @@ impl<T: ViewType> ImageViewDesc<T> {
     pub fn with_array(mut self, array: Range<u8>) -> Self {
         self.array = Some(array);
         self
+    }
+
+    pub fn is_array(&self) -> bool {
+        self.array.is_some()
     }
 }
 
