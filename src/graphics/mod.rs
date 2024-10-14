@@ -8,5 +8,6 @@ pub mod query;
 pub mod resources;
 pub mod swapchain;
 pub mod worker_thread;
+pub mod types;
 
 mod utils;

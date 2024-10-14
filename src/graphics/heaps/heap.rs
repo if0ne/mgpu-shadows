@@ -3,25 +3,20 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::graphics::{
     device::Device,
-    resources::{BufferResource, ImageResource, ImageResourceDesc, ResourceStates},
+    resources::{BufferResource, ImageResource, ImageResourceDesc, ResourceStates}, types::MemoryHeapType,
 };
 
-#[derive(Debug)]
-pub struct Allocation {
-    pub(in super::super) heap: MemoryHeap,
-    pub(in super::super) offset: usize,
-    pub(in super::super) size: usize,
-}
+use super::Allocation;
 
 #[derive(Clone, Debug)]
 pub struct MemoryHeap(Arc<MemoryHeapInner>);
 
 impl MemoryHeap {
-    pub(in super::super) fn inner_new(device: Device, size: usize, mtype: MemoryHeapType) -> Self {
+    pub(crate) fn inner_new(device: Device, size: usize, mtype: MemoryHeapType) -> Self {
         let desc = dx::HeapDesc::new(
             size,
             dx::HeapProperties::new(
-                mtype.into(),
+                mtype.as_raw(),
                 dx::CpuPageProperty::Unknown,
                 dx::MemoryPool::Unknown,
             ),
@@ -135,36 +130,8 @@ impl Deref for MemoryHeap {
 
 #[derive(Debug)]
 pub struct MemoryHeapInner {
-    pub(in super::super) device: Device,
-    pub(in super::super) heap: dx::Heap,
-    pub(in super::super) size: usize,
-    pub(in super::super) mtype: MemoryHeapType,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum MemoryHeapType {
-    Gpu,
-    Cpu,
-    Readback,
-    Shared,
-}
-
-impl MemoryHeapType {
-    fn flags(&self) -> dx::HeapFlags {
-        match self {
-            MemoryHeapType::Shared => dx::HeapFlags::Shared | dx::HeapFlags::SharedCrossAdapter,
-            _ => dx::HeapFlags::empty(),
-        }
-    }
-}
-
-impl Into<dx::HeapType> for MemoryHeapType {
-    fn into(self) -> dx::HeapType {
-        match self {
-            MemoryHeapType::Gpu => dx::HeapType::Default,
-            MemoryHeapType::Cpu => dx::HeapType::Upload,
-            MemoryHeapType::Readback => dx::HeapType::Readback,
-            MemoryHeapType::Shared => dx::HeapType::Default,
-        }
-    }
+    pub(crate) device: Device,
+    pub(crate) heap: dx::Heap,
+    pub(crate) size: usize,
+    pub(crate) mtype: MemoryHeapType,
 }
