@@ -1,13 +1,11 @@
 use std::{
     fmt::Debug,
-    marker::PhantomData,
-    ops::{Deref, Range},
+    ops::Deref,
     sync::{Arc, OnceLock},
 };
 
 use atomig::Atomic;
-use oxidx::dx::{self, IDevice, IResource};
-use parking_lot::Mutex;
+use oxidx::dx::{self, IDevice};
 
 use crate::graphics::{
     descriptor_heap::{GpuView, SrvView, UavView},
@@ -16,8 +14,8 @@ use crate::graphics::{
 };
 
 use super::{
-    buffer::BaseBuffer, BufferResource, BufferResourceDesc, GpuOnlyDescriptorAccess, NoGpuAccess,
-    Resource, ResourceDesc, ResourceStates,
+    buffer::BaseBuffer, BufferResource, BufferResourceDesc, GpuOnlyDescriptorAccess, Resource,
+    ResourceDesc, ResourceStates,
 };
 
 #[derive(Clone, Debug)]
@@ -44,7 +42,7 @@ pub struct CounterBufferInner {
 impl CounterBuffer {
     pub(in super::super) fn inner_new(
         resource: dx::Resource,
-        desc: CounterBufferDesc<T>,
+        desc: CounterBufferDesc,
         state: ResourceStates,
         allocation: Option<Allocation>,
         access: GpuOnlyDescriptorAccess,
@@ -52,7 +50,7 @@ impl CounterBuffer {
         Self(Arc::new(CounterBufferInner {
             buffer: BaseBuffer {
                 raw: resource,
-                size: desc.count * size_of::<T>(),
+                size: desc.count * 4,
                 state: Atomic::new(state),
                 flags: dx::ResourceFlags::empty(),
                 allocation,
@@ -76,7 +74,7 @@ impl CounterBuffer {
             &self.buffer.raw,
             Some(&dx::ShaderResourceViewDesc::buffer(
                 dx::Format::R32Typeless,
-                self.count,
+                0..self.count,
                 4,
                 dx::BufferSrvFlags::Raw,
             )),
@@ -97,7 +95,7 @@ impl CounterBuffer {
             None,
             Some(&dx::UnorderedAccessViewDesc::buffer(
                 dx::Format::R32Typeless,
-                self.count,
+                0..self.count,
                 4,
                 0,
                 dx::BufferUavFlags::Raw,
@@ -118,10 +116,7 @@ impl Resource for CounterBuffer {
     }
 
     fn get_desc(&self) -> Self::Desc {
-        StagingBufferDesc {
-            count: self.count,
-            _marker: PhantomData,
-        }
+        CounterBufferDesc { count: self.count }
     }
 
     fn from_desc(
@@ -189,7 +184,7 @@ impl CounterBufferDesc {
     }
 }
 
-impl<T> Into<dx::ResourceDesc> for CounterBufferDesc<T> {
+impl Into<dx::ResourceDesc> for CounterBufferDesc {
     fn into(self) -> dx::ResourceDesc {
         dx::ResourceDesc::buffer(self.count * 4)
     }

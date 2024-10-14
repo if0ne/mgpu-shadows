@@ -249,19 +249,19 @@ impl Drop for ImageInner {
         self.cached_rtv
             .lock()
             .iter()
-            .for_each(|(_, handle)| self.access.0.remove_rtv(handle));
+            .for_each(|(_, handle)| self.access.0.remove_rtv(*handle));
         self.cached_dsv
             .lock()
             .iter()
-            .for_each(|(_, handle)| self.access.0.remove_dsv(handle));
+            .for_each(|(_, handle)| self.access.0.remove_dsv(*handle));
         self.cached_srv
             .lock()
             .iter()
-            .for_each(|(_, handle)| self.access.0.remove_srv(handle));
+            .for_each(|(_, handle)| self.access.0.remove_srv(*handle));
         self.cached_uav
             .lock()
             .iter()
-            .for_each(|(_, handle)| self.access.0.remove_uav(handle));
+            .for_each(|(_, handle)| self.access.0.remove_uav(*handle));
     }
 }
 

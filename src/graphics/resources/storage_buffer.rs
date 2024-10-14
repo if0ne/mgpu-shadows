@@ -1,13 +1,12 @@
 use std::{
     fmt::Debug,
     marker::PhantomData,
-    ops::{Deref, Range},
+    ops::Deref,
     sync::{Arc, OnceLock},
 };
 
 use atomig::Atomic;
-use oxidx::dx::{self, IDevice, IResource};
-use parking_lot::Mutex;
+use oxidx::dx::{self, IDevice};
 
 use crate::graphics::{
     descriptor_heap::{GpuView, SrvView, UavView},
@@ -16,9 +15,8 @@ use crate::graphics::{
 };
 
 use super::{
-    buffer::BaseBuffer, counter_buffer, BufferResource, BufferResourceDesc, CounterBuffer,
-    CounterBufferDesc, GpuOnlyDescriptorAccess, NoGpuAccess, Resource, ResourceDesc,
-    ResourceStates,
+    buffer::BaseBuffer, BufferResource, BufferResourceDesc, CounterBuffer, CounterBufferDesc,
+    GpuOnlyDescriptorAccess, Resource, ResourceDesc, ResourceStates,
 };
 
 #[derive(Clone, Debug)]
@@ -54,8 +52,6 @@ impl<T> StorageBuffer<T> {
         allocation: Option<Allocation>,
         access: GpuOnlyDescriptorAccess,
     ) -> Self {
-        let mapped_data = resource.map::<T>(0, None).unwrap();
-
         let counter_buffer = CounterBuffer::from_desc(
             device,
             CounterBufferDesc::new(1),
@@ -92,7 +88,7 @@ impl<T> StorageBuffer<T> {
             &self.buffer.raw,
             Some(&dx::ShaderResourceViewDesc::buffer(
                 dx::Format::Unknown,
-                self.count,
+                0..self.count,
                 size_of::<T>(),
                 dx::BufferSrvFlags::empty(),
             )),
@@ -113,7 +109,7 @@ impl<T> StorageBuffer<T> {
             Some(self.counter_buffer.get_raw()),
             Some(&dx::UnorderedAccessViewDesc::buffer(
                 dx::Format::Unknown,
-                self.count,
+                0..self.count,
                 size_of::<T>(),
                 0,
                 dx::BufferUavFlags::empty(),
@@ -200,10 +196,19 @@ impl<T> BufferResource for StorageBuffer<T> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct StorageBufferDesc<T> {
     count: usize,
     _marker: PhantomData<T>,
+}
+
+impl<T> Clone for StorageBufferDesc<T> {
+    fn clone(&self) -> Self {
+        Self {
+            count: self.count,
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl<T> StorageBufferDesc<T> {
