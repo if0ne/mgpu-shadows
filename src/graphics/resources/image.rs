@@ -297,13 +297,19 @@ impl Resource for Image {
 }
 
 impl ImageResource for Image {
+    type SubIndex = SubresourceIndex;
+
     fn get_barrier(
         &self,
         state: ResourceStates,
-        subresource: SubresourceIndex,
+        subresource: Option<SubresourceIndex>,
     ) -> Option<dx::ResourceBarrier<'_>> {
-        let index =
-            subresource.mip_index + subresource.array_index * (self.desc.mip_levels as usize);
+        let index = if let Some(subindex) = subresource {
+            Some(subindex.mip_index + subindex.array_index * (self.desc.mip_levels as usize))
+        } else {
+            None
+        };
+            
         let old = self.state[index].swap(state, std::sync::atomic::Ordering::Relaxed);
 
         if old != state {
@@ -311,7 +317,7 @@ impl ImageResource for Image {
                 self.get_raw(),
                 old.into(),
                 state.into(),
-                Some(index),
+                index,
             ))
         } else {
             None
