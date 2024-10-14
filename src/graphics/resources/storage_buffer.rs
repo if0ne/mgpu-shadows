@@ -206,11 +206,10 @@ pub struct StorageBufferDesc<T> {
     _marker: PhantomData<T>,
 }
 
-impl<T> StagingBufferDesc<T> {
+impl<T> StorageBufferDesc<T> {
     pub fn new(size: usize) -> Self {
         Self {
             count: size,
-            readback: false,
             _marker: PhantomData,
         }
     }
