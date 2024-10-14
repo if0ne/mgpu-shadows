@@ -13,7 +13,6 @@ use crate::graphics::{
     descriptor_heap::{GpuView, SrvView, UavView},
     device::Device,
     heaps::{Allocation, MemoryHeap, MemoryHeapType},
-    utils::NonNullSend,
 };
 
 use super::{
@@ -36,8 +35,8 @@ impl Deref for CounterBuffer {
 pub struct CounterBufferInner {
     buffer: BaseBuffer,
     count: usize,
-    access: GpuOnlyDescriptorAccess,
 
+    access: GpuOnlyDescriptorAccess,
     srv: OnceLock<GpuView<SrvView>>,
     uav: OnceLock<GpuView<UavView>>,
 }
