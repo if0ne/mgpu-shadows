@@ -309,7 +309,7 @@ impl ImageResource for Image {
         } else {
             None
         };
-            
+
         let old = self.state[index].swap(state, std::sync::atomic::Ordering::Relaxed);
 
         if old != state {
