@@ -9,7 +9,6 @@ use std::{
 use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IGraphicsCommandListExt};
 use parking_lot::Mutex;
-use smallvec::SmallVec;
 
 use crate::graphics::{
     command_queue::WorkerType,
@@ -109,6 +108,10 @@ impl Image {
         match desc {
             Some(mut desc) => {
                 assert!(self.is_array() || !desc.is_array());
+                assert!(
+                    desc.mip_slice <= self.desc.mip_levels && desc.mip_base < self.desc.mip_levels
+                );
+                assert!(desc.array.unwrap_or(0..0).end < self.desc.count);
 
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
@@ -140,6 +143,10 @@ impl Image {
         match desc {
             Some(mut desc) => {
                 assert!(self.is_array() || !desc.is_array());
+                assert!(
+                    desc.mip_slice <= self.desc.mip_levels && desc.mip_base < self.desc.mip_levels
+                );
+                assert!(desc.array.unwrap_or(0..0).end < self.desc.count);
 
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
@@ -171,6 +178,10 @@ impl Image {
         match desc {
             Some(mut desc) => {
                 assert!(self.is_array() || !desc.is_array());
+                assert!(
+                    desc.mip_slice <= self.desc.mip_levels && desc.mip_base < self.desc.mip_levels
+                );
+                assert!(desc.array.unwrap_or(0..0).end < self.desc.count);
 
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
@@ -202,6 +213,10 @@ impl Image {
         match desc {
             Some(mut desc) => {
                 assert!(self.is_array() || !desc.is_array());
+                assert!(
+                    desc.mip_slice <= self.desc.mip_levels && desc.mip_base < self.desc.mip_levels
+                );
+                assert!(desc.array.unwrap_or(0..0).end < self.desc.count);
 
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
