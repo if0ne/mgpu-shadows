@@ -381,6 +381,8 @@ impl ImageResource for Image {
         subresource: Option<SubresourceIndex>,
     ) -> Option<dx::ResourceBarrier<'_>> {
         let index = if let Some(subindex) = subresource {
+            assert!(!self.is_array() || subindex.array_index == 0);
+
             Some(subindex.mip_index + subindex.array_index * (self.desc.mip_levels as usize))
         } else {
             None

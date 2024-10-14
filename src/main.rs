@@ -44,8 +44,11 @@ fn main() {
     let res1: SharedResource<Image> = gpu1.create_shared_image(
         &heap1,
         0,
-        ImageDesc::new(1920, 1080, Format::R8Unorm)
-            .with_usage(TextureUsage::RenderTarget { color: None }),
+        ImageDesc::new(1920, 1080, Format::R8Unorm).with_usage(TextureUsage::RenderTarget {
+            color: None,
+            srv: false,
+            uav: false,
+        }),
         GpuOnlyDescriptorAccess(desc1.clone()),
         ResourceStates::RenderTarget,
         ResourceStates::CopyDst,
@@ -60,9 +63,9 @@ fn main() {
     );
 
     let fence = gpu1.create_fence();
-    let queue = gpu1.create_transfer_command_queue(fence.clone().into());
+    let queue = gpu1.create_graphics_command_queue(fence.clone().into());
 
-    let query = gpu1.create_query_heap::<TimestampQuery<Transfer>>(1);
+    let query = gpu1.create_query_heap::<TimestampQuery<Graphics>>(1);
 
     let worker = queue.get_worker_thread(None);
 
