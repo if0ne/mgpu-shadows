@@ -201,8 +201,11 @@ impl Device {
     ) -> TextureCopyableFootprints {
         let desc: dx::ResourceDesc = desc.into();
 
-        // TODO: Handle VolumeTexture
-        let sub_count = (desc.depth_or_array_size() * desc.mip_levels()) as usize;
+        let sub_count = if desc.dimension() == dx::ResourceDimension::Texture3D {
+            desc.mip_levels() as usize
+        } else {
+            (desc.depth_or_array_size() * desc.mip_levels()) as usize
+        };
 
         let mut layouts = vec![Default::default(); sub_count];
         let mut num_rows = vec![Default::default(); sub_count];
