@@ -5,9 +5,10 @@ use oxidx::dx::{self, IFactory4, ISwapchain1, ISwapchain3, OUTPUT_NONE};
 use super::{
     commands::{CommandQueue, Graphics},
     device::Device,
-    resources::{Image, ImageDesc, ResourceStates},
+    resources::{Image, ImageDesc},
     types::{PresentMode, SwapchainDesc, TextureUsage},
     views::{DsvView, GpuView, RtvView, SrvView, ViewAllocator},
+    ResourceStates,
 };
 
 #[derive(Debug)]
@@ -180,7 +181,7 @@ impl SwapchainImage {
     }
 
     fn set_new(&mut self, raw: dx::Resource, allocator: &ViewAllocator) {
-        self.raw = Some(raw);
         self.rtv = allocator.push_rtv(&raw, None);
+        self.raw = Some(raw);
     }
 }

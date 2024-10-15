@@ -5,15 +5,15 @@ use oxidx::dx::{self, IDevice, IResource};
 use parking_lot::Mutex;
 
 use crate::graphics::{
-    descriptor_heap::{CbvView, DescriptorAllocator, GpuView},
     device::Device,
-    heaps::{Allocation, MemoryHeap, MemoryHeapType},
+    heaps::{Allocation, MemoryHeap},
     utils::NonNullSend,
+    views::{CbvView, GpuView},
+    MemoryHeapType, ResourceStates, ViewAllocator,
 };
 
 use super::{
     buffer::BaseBuffer, BufferResource, BufferResourceDesc, GpuAccess, Resource, ResourceDesc,
-    ResourceStates,
 };
 
 #[derive(Clone, Debug)]
@@ -32,7 +32,7 @@ pub struct ConstantBufferInner<T: Clone> {
     buffer: BaseBuffer,
     mapped_data: Mutex<NonNullSend<T>>,
     count: usize,
-    access: ConstantBufferGpuAccess,
+    access: CbGpuAccess,
     marker: PhantomData<T>,
 }
 
@@ -50,9 +50,9 @@ impl<T: Clone> ConstantBuffer<T> {
 
         let access = match access {
             GpuAccess::Address => {
-                ConstantBufferGpuAccess::Addresses(Self::create_addresses(base_loc, desc.count))
+                CbGpuAccess::Addresses(Self::create_addresses(base_loc, desc.count))
             }
-            GpuAccess::Descriptor(descriptor_allocator) => ConstantBufferGpuAccess::Descriptors(
+            GpuAccess::View(descriptor_allocator) => CbGpuAccess::View(
                 descriptor_allocator.clone(),
                 Self::create_cbvs(base_loc, desc.count, &descriptor_allocator),
             ),
@@ -76,7 +76,7 @@ impl<T: Clone> ConstantBuffer<T> {
     fn create_cbvs(
         base_loc: dx::GpuVirtualAddress,
         size: usize,
-        allocator: &DescriptorAllocator,
+        allocator: &ViewAllocator,
     ) -> Vec<GpuView<CbvView>> {
         (0..size)
             .map(|i| {
@@ -116,14 +116,14 @@ impl<T: Clone> ConstantBuffer<T> {
 
     pub fn get_address(&self, index: usize) -> dx::GpuVirtualAddress {
         match self.access {
-            ConstantBufferGpuAccess::Addresses(ref vec) => vec[index],
+            CbGpuAccess::Addresses(ref vec) => vec[index],
             _ => unreachable!(),
         }
     }
 
     pub fn get_descriptor(&self, index: usize) -> GpuView<CbvView> {
         match self.access {
-            ConstantBufferGpuAccess::Descriptors(_, ref vec) => vec[index],
+            CbGpuAccess::View(_, ref vec) => vec[index],
             _ => unreachable!(),
         }
     }
@@ -133,7 +133,7 @@ impl<T: Clone> Drop for ConstantBufferInner<T> {
     fn drop(&mut self) {
         self.buffer.raw.unmap(0, None);
 
-        if let ConstantBufferGpuAccess::Descriptors(ref allocator, ref mut vec) = self.access {
+        if let CbGpuAccess::View(ref allocator, ref mut vec) = self.access {
             let handles = std::mem::take(vec);
 
             for handle in handles {
@@ -237,9 +237,9 @@ impl<T: Clone> ResourceDesc for ConstantBufferDesc<T> {}
 impl<T: Clone> BufferResourceDesc for ConstantBufferDesc<T> {}
 
 #[derive(Debug)]
-pub enum ConstantBufferGpuAccess {
+pub enum CbGpuAccess {
     Addresses(Vec<dx::GpuVirtualAddress>),
-    Descriptors(DescriptorAllocator, Vec<GpuView<CbvView>>),
+    View(ViewAllocator, Vec<GpuView<CbvView>>),
 }
 
 #[cfg(test)]

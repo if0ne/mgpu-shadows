@@ -12,13 +12,14 @@ use super::{
     query::{QueryHeap, QueryHeapType},
     resources::{
         BufferResource, BufferResourceDesc, ImageResource, ImageResourceDesc, Resource,
-        ResourceStates, ShareableBuffer, ShareableImage, SharedResource,
+        ShareableBuffer, ShareableImage, SharedResource,
     },
     swapchain::Swapchain,
     types::{
         BufferCopyableFootprints, MemoryHeapType, MipInfo, SwapchainDesc, TextureCopyableFootprints,
     },
     views::ViewAllocator,
+    ResourceStates,
 };
 
 #[derive(Clone, Debug)]

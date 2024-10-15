@@ -8,14 +8,15 @@ use atomig::Atomic;
 use oxidx::dx::{self, IDevice};
 
 use crate::graphics::{
-    descriptor_heap::{GpuView, SrvView, UavView},
     device::Device,
-    heaps::{Allocation, MemoryHeap, MemoryHeapType},
+    heaps::{Allocation, MemoryHeap},
+    types::MemoryHeapType,
+    views::{GpuView, SrvView, UavView},
+    ResourceStates,
 };
 
 use super::{
-    buffer::BaseBuffer, BufferResource, BufferResourceDesc, Resource, ResourceDesc, ResourceStates,
-    ViewAccess,
+    buffer::BaseBuffer, BufferResource, BufferResourceDesc, Resource, ResourceDesc, ViewAccess,
 };
 
 #[derive(Clone, Debug)]
@@ -131,7 +132,7 @@ impl Resource for CounterBuffer {
                 &dx::HeapProperties::upload(),
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * 4),
-                init_state.into(),
+                init_state.as_raw(),
                 None,
             )
             .unwrap();
@@ -163,8 +164,8 @@ impl BufferResource for CounterBuffer {
         if old != state {
             Some(dx::ResourceBarrier::transition(
                 self.get_raw(),
-                old.into(),
-                state.into(),
+                old.as_raw(),
+                state.as_raw(),
                 None,
             ))
         } else {

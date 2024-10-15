@@ -4,7 +4,8 @@ use oxidx::dx::{self, IDevice};
 
 use crate::graphics::{
     device::Device,
-    resources::{NoGpuAccess, Resource, ResourceStates, StagingBuffer, StagingBufferDesc},
+    resources::{NoGpuAccess, Resource, StagingBuffer, StagingBufferDesc},
+    ResourceStates,
 };
 
 use super::QueryHeapType;

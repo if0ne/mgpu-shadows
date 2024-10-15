@@ -11,13 +11,13 @@ use parking_lot::Mutex;
 
 use crate::graphics::{
     device::Device,
-    heaps::{Allocation, MemoryHeap, MemoryHeapType},
+    heaps::{Allocation, MemoryHeap},
     utils::NonNullSend,
+    MemoryHeapType, ResourceStates,
 };
 
 use super::{
     buffer::BaseBuffer, BufferResource, BufferResourceDesc, NoGpuAccess, Resource, ResourceDesc,
-    ResourceStates,
 };
 
 #[derive(Clone, Debug)]
@@ -186,8 +186,8 @@ impl<T: Clone> BufferResource for StagingBuffer<T> {
         if old != state {
             Some(dx::ResourceBarrier::transition(
                 self.get_raw(),
-                old.into(),
-                state.into(),
+                old.as_raw(),
+                state.as_raw(),
                 None,
             ))
         } else {

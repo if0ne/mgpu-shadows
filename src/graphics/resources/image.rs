@@ -11,18 +11,18 @@ use oxidx::dx::{self, IDevice, IGraphicsCommandListExt};
 use parking_lot::Mutex;
 
 use crate::graphics::{
-    command_queue::WorkerType,
-    descriptor_heap::{DsvView, GpuView, RtvView, SrvView, UavView, ViewType},
+    commands::{WorkerThread, WorkerType},
     device::Device,
-    heaps::{Allocation, MemoryHeap, MemoryHeapType},
-    utils::TextureCopyableFootprints,
-    worker_thread::WorkerThread,
+    heaps::{Allocation, MemoryHeap},
+    types::{MemoryHeapType, SubresourceIndex, TextureCopyableFootprints, TextureUsage},
+    views::{DsvView, GpuView, RtvView, SrvView, UavView, ViewType},
+    ResourceStates,
 };
 
 use super::{
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    ImageResource, ImageResourceDesc, NoGpuAccess, Resource, ResourceDesc, ResourceStates,
-    ShareableImage, ShareableImageDesc, SubresourceIndex, TextureUsage, ViewAccess,
+    ImageResource, ImageResourceDesc, NoGpuAccess, Resource, ResourceDesc, ShareableImage,
+    ShareableImageDesc, ViewAccess,
 };
 
 #[derive(Clone, Debug)]
@@ -111,7 +111,7 @@ impl Image {
                 assert!(
                     desc.mip_slice <= self.desc.mip_levels && desc.mip_base < self.desc.mip_levels
                 );
-                assert!(desc.array.unwrap_or(0..0).end < self.desc.count);
+                assert!(desc.array.as_ref().unwrap_or(&(0..0)).end < self.desc.count);
 
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
@@ -146,7 +146,7 @@ impl Image {
                 assert!(
                     desc.mip_slice <= self.desc.mip_levels && desc.mip_base < self.desc.mip_levels
                 );
-                assert!(desc.array.unwrap_or(0..0).end < self.desc.count);
+                assert!(desc.array.as_ref().unwrap_or(&(0..0)).end < self.desc.count);
 
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
@@ -181,7 +181,7 @@ impl Image {
                 assert!(
                     desc.mip_slice <= self.desc.mip_levels && desc.mip_base < self.desc.mip_levels
                 );
-                assert!(desc.array.unwrap_or(0..0).end < self.desc.count);
+                assert!(desc.array.as_ref().unwrap_or(&(0..0)).end < self.desc.count);
 
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
@@ -216,7 +216,7 @@ impl Image {
                 assert!(
                     desc.mip_slice <= self.desc.mip_levels && desc.mip_base < self.desc.mip_levels
                 );
-                assert!(desc.array.unwrap_or(0..0).end < self.desc.count);
+                assert!(desc.array.as_ref().unwrap_or(&(0..0)).end < self.desc.count);
 
                 if desc.format.is_none() {
                     desc.format = Some(self.desc.format);
@@ -349,7 +349,7 @@ impl Resource for Image {
                 &dx::HeapProperties::default(),
                 dx::HeapFlags::empty(),
                 &desc.clone().into(),
-                init_state.into(),
+                init_state.as_raw(),
                 desc.clear_color().as_ref(),
             )
             .unwrap();
@@ -394,8 +394,8 @@ impl ImageResource for Image {
             if old != state {
                 Some(dx::ResourceBarrier::transition(
                     self.get_raw(),
-                    old.into(),
-                    state.into(),
+                    old.as_raw(),
+                    state.as_raw(),
                     Some(index),
                 ))
             } else {
@@ -412,8 +412,8 @@ impl ImageResource for Image {
             if old != state {
                 Some(dx::ResourceBarrier::transition(
                     self.get_raw(),
-                    old.into(),
-                    state.into(),
+                    old.as_raw(),
+                    state.as_raw(),
                     None,
                 ))
             } else {

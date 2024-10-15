@@ -1,11 +1,12 @@
 use oxidx::dx;
 
 use crate::graphics::{
-    heaps::{MemoryHeap, MemoryHeapType},
+    heaps::MemoryHeap,
     resources::{ImageResourceDesc, ShareableBufferDesc, ShareableImageDesc},
+    MemoryHeapType, ResourceStates,
 };
 
-use super::{super::device::Device, Resource, ResourceStates, ShareableBuffer, ShareableImage};
+use super::{super::device::Device, Resource, ShareableBuffer, ShareableImage};
 
 #[derive(Clone, Debug)]
 pub struct SharedResource<R: Resource> {

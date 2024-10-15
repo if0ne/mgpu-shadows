@@ -4,16 +4,16 @@ use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IGraphicsCommandListExt, IResource};
 
 use crate::graphics::{
-    command_queue::WorkerType,
+    commands::{WorkerThread, WorkerType},
     device::Device,
-    heaps::{Allocation, MemoryHeap, MemoryHeapType},
-    worker_thread::WorkerThread,
+    heaps::{Allocation, MemoryHeap},
+    MemoryHeapType, ResourceStates,
 };
 
 use super::{
     buffer::BaseBuffer,
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    BufferResource, BufferResourceDesc, NoGpuAccess, Resource, ResourceDesc, ResourceStates,
+    BufferResource, BufferResourceDesc, NoGpuAccess, Resource, ResourceDesc,
 };
 
 #[derive(Clone, Debug)]
@@ -149,7 +149,7 @@ impl<T: Clone> Resource for VertexBuffer<T> {
                 &dx::HeapProperties::default(),
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
-                init_state.into(),
+                init_state.as_raw(),
                 None,
             )
             .unwrap();
@@ -188,8 +188,8 @@ impl<T: Clone> BufferResource for VertexBuffer<T> {
         if old != state {
             Some(dx::ResourceBarrier::transition(
                 self.get_raw(),
-                old.into(),
-                state.into(),
+                old.as_raw(),
+                state.as_raw(),
                 None,
             ))
         } else {

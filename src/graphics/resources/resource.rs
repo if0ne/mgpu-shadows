@@ -1,9 +1,9 @@
-use atomig::Atom;
 use oxidx::dx;
 
 use crate::graphics::{
-    descriptor_heap::DescriptorAllocator,
     heaps::{Allocation, MemoryHeap},
+    views::ViewAllocator,
+    ResourceStates, SubresourceIndex,
 };
 
 use super::super::device::Device;
@@ -67,7 +67,7 @@ pub trait ShareableImage: ImageResource<Desc: ShareableImageDesc> {}
 #[derive(Clone, Debug)]
 pub enum GpuAccess {
     Address,
-    Descriptor(DescriptorAllocator),
+    View(ViewAllocator),
 }
 
 impl PartialEq for GpuAccess {
@@ -81,51 +81,13 @@ impl PartialEq for GpuAccess {
 impl Eq for GpuAccess {}
 
 #[derive(Clone, Debug)]
-pub struct ViewAccess(pub DescriptorAllocator);
+pub struct ViewAccess(pub ViewAllocator);
 
-impl From<DescriptorAllocator> for ViewAccess {
-    fn from(value: DescriptorAllocator) -> Self {
+impl From<ViewAllocator> for ViewAccess {
+    fn from(value: ViewAllocator) -> Self {
         Self(value)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct NoGpuAccess;
-
-bitflags::bitflags! {
-    #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-    pub struct ResourceStates: i32 {
-        const Common = dx::ResourceStates::Common.bits();
-        const VertexAndConstantBuffer = dx::ResourceStates::VertexAndConstantBuffer.bits();
-        const IndexBuffer =  dx::ResourceStates::IndexBuffer.bits();
-        const RenderTarget =  dx::ResourceStates::RenderTarget.bits();
-        const UnorderedAccess = dx::ResourceStates::UnorderedAccess.bits();
-        const DepthWrite =  dx::ResourceStates::DepthWrite.bits();
-        const DepthRead = dx::ResourceStates::DepthRead.bits();
-        const NonPixelShaderResource = dx::ResourceStates::NonPixelShaderResource.bits();
-        const PixelShaderResource = dx::ResourceStates::PixelShaderResource.bits();
-        const CopyDst = dx::ResourceStates::CopyDest.bits();
-        const CopySrc = dx::ResourceStates::CopySource.bits();
-        const GenericRead = dx::ResourceStates::GenericRead.bits();
-        const AllShaderResource = dx::ResourceStates::AllShaderResource.bits();
-        const Present = dx::ResourceStates::Present.bits();
-    }
-}
-
-impl From<ResourceStates> for dx::ResourceStates {
-    fn from(value: ResourceStates) -> Self {
-        dx::ResourceStates::from_bits(value.bits()).unwrap()
-    }
-}
-
-impl Atom for ResourceStates {
-    type Repr = i32;
-
-    fn pack(self) -> Self::Repr {
-        self.bits()
-    }
-
-    fn unpack(src: Self::Repr) -> Self {
-        ResourceStates::from_bits(src).unwrap()
-    }
-}

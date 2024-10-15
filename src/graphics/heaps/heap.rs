@@ -3,8 +3,9 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::graphics::{
     device::Device,
-    resources::{BufferResource, ImageResource, ImageResourceDesc, ResourceStates},
+    resources::{BufferResource, ImageResource, ImageResourceDesc},
     types::MemoryHeapType,
+    ResourceStates,
 };
 
 use super::Allocation;
@@ -55,7 +56,7 @@ impl MemoryHeap {
         let resource: dx::Resource = self
             .device
             .raw
-            .create_placed_resource(&self.heap, offset, &raw_desc, initial_state.into(), None)
+            .create_placed_resource(&self.heap, offset, &raw_desc, initial_state.as_raw(), None)
             .unwrap();
 
         R::from_raw_placed(
@@ -88,7 +89,7 @@ impl MemoryHeap {
                 &self.heap,
                 offset,
                 &raw_desc,
-                initial_state.into(),
+                initial_state.as_raw(),
                 desc.clear_color().as_ref(),
             )
             .unwrap();

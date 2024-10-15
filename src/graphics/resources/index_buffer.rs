@@ -4,16 +4,17 @@ use atomig::Atomic;
 use oxidx::dx::{self, IDevice, IGraphicsCommandListExt, IResource};
 
 use crate::graphics::{
-    command_queue::WorkerType,
+    commands::{WorkerThread, WorkerType},
     device::Device,
-    heaps::{Allocation, MemoryHeap, MemoryHeapType},
-    worker_thread::WorkerThread,
+    heaps::{Allocation, MemoryHeap},
+    types::MemoryHeapType,
+    ResourceStates,
 };
 
 use super::{
     buffer::BaseBuffer,
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    BufferResource, BufferResourceDesc, NoGpuAccess, Resource, ResourceDesc, ResourceStates,
+    BufferResource, BufferResourceDesc, NoGpuAccess, Resource, ResourceDesc,
 };
 
 pub trait IndexBufferType: Clone {
@@ -214,8 +215,8 @@ impl<T: IndexBufferType> BufferResource for IndexBuffer<T> {
         if old != state {
             Some(dx::ResourceBarrier::transition(
                 self.get_raw(),
-                old.into(),
-                state.into(),
+                old.as_raw(),
+                state.as_raw(),
                 None,
             ))
         } else {

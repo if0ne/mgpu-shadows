@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, marker::PhantomData, ops::Deref, sync::Arc};
 
-use oxidx::dx::{self, ICommandQueue, IDevice, IGraphicsCommandList, PSO_NONE};
+use oxidx::dx::{self, ICommandAllocator, ICommandQueue, IDevice, IGraphicsCommandList, PSO_NONE};
 use parking_lot::Mutex;
 
 use crate::graphics::{device::Device, fence::Fence};
@@ -128,7 +128,7 @@ impl<T: WorkerType> CommandQueue<T> {
                     None
                 }
             }) {
-            allocator.reset();
+            allocator.raw.reset().unwrap();
             allocator
         } else {
             self.device.create_command_allocator()

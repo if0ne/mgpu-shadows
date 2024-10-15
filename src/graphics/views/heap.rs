@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use oxidx::dx;
+use oxidx::dx::{self, IDescriptorHeap, IDevice};
 
 use crate::graphics::device::Device;
 

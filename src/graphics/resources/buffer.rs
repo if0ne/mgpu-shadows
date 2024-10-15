@@ -3,9 +3,7 @@ use std::fmt::Debug;
 use atomig::Atomic;
 use oxidx::dx;
 
-use crate::graphics::heaps::Allocation;
-
-use super::ResourceStates;
+use crate::graphics::{heaps::Allocation, ResourceStates};
 
 #[derive(Debug)]
 pub struct BaseBuffer {

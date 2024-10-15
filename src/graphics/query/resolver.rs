@@ -1,8 +1,11 @@
 use std::ops::Range;
 
-use oxidx::dx;
+use oxidx::dx::{self, IGraphicsCommandList};
 
-use crate::graphics::commands::{WorkerThread, WorkerType};
+use crate::graphics::{
+    commands::{WorkerThread, WorkerType},
+    Resource,
+};
 
 use super::{QueryHeap, QueryHeapType, TimestampQuery};
 

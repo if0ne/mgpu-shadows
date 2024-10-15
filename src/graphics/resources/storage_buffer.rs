@@ -9,14 +9,15 @@ use atomig::Atomic;
 use oxidx::dx::{self, IDevice};
 
 use crate::graphics::{
-    descriptor_heap::{GpuView, SrvView, UavView},
     device::Device,
-    heaps::{Allocation, MemoryHeap, MemoryHeapType},
+    heaps::{Allocation, MemoryHeap},
+    views::{GpuView, SrvView, UavView},
+    MemoryHeapType, ResourceStates,
 };
 
 use super::{
     buffer::BaseBuffer, BufferResource, BufferResourceDesc, CounterBuffer, CounterBufferDesc,
-    Resource, ResourceDesc, ResourceStates, ViewAccess,
+    Resource, ResourceDesc, ViewAccess,
 };
 
 #[derive(Clone, Debug)]
@@ -154,7 +155,7 @@ impl<T> Resource for StorageBuffer<T> {
                 &dx::HeapProperties::default(),
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
-                init_state.into(),
+                init_state.as_raw(),
                 None,
             )
             .unwrap();
@@ -186,8 +187,8 @@ impl<T> BufferResource for StorageBuffer<T> {
         if old != state {
             Some(dx::ResourceBarrier::transition(
                 self.get_raw(),
-                old.into(),
-                state.into(),
+                old.as_raw(),
+                state.as_raw(),
                 None,
             ))
         } else {

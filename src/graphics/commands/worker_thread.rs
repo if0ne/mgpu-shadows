@@ -8,9 +8,10 @@ use super::{
 use crate::graphics::{
     device::Device,
     resources::{
-        BufferResource, Image, ImageResource, IndexBuffer, IndexBufferType, ResourceStates,
-        SharedResource, VertexBuffer,
+        BufferResource, Image, ImageResource, IndexBuffer, IndexBufferType, SharedResource,
+        VertexBuffer,
     },
+    ResourceStates,
 };
 
 use oxidx::dx::{self, IDevice, IGraphicsCommandList};
