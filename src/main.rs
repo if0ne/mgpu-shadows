@@ -5,9 +5,7 @@ use mgpu_shadows::graphics::{
     device::Device,
     heaps::MemoryHeapType,
     query::{QueryResolver, TimestampQuery},
-    resources::{
-        GpuOnlyDescriptorAccess, Image, ImageDesc, ResourceStates, SharedResource, TextureUsage,
-    },
+    resources::{Image, ImageDesc, ResourceStates, SharedResource, TextureUsage, ViewAccess},
     swapchain::Swapchain,
 };
 use oxidx::dx::{
@@ -49,7 +47,7 @@ fn main() {
             srv: false,
             uav: false,
         }),
-        GpuOnlyDescriptorAccess(desc1.clone()),
+        ViewAccess(desc1.clone()),
         ResourceStates::RenderTarget,
         ResourceStates::CopyDst,
     );
@@ -57,7 +55,7 @@ fn main() {
     let res2 = res1.connect_texture(
         &heap2,
         0,
-        GpuOnlyDescriptorAccess(desc2.clone()),
+        ViewAccess(desc2.clone()),
         ResourceStates::RenderTarget,
         ResourceStates::CopyDst,
     );

@@ -81,9 +81,9 @@ impl PartialEq for GpuAccess {
 impl Eq for GpuAccess {}
 
 #[derive(Clone, Debug)]
-pub struct GpuOnlyDescriptorAccess(pub DescriptorAllocator);
+pub struct ViewAccess(pub DescriptorAllocator);
 
-impl From<DescriptorAllocator> for GpuOnlyDescriptorAccess {
+impl From<DescriptorAllocator> for ViewAccess {
     fn from(value: DescriptorAllocator) -> Self {
         Self(value)
     }
@@ -128,25 +128,4 @@ impl Atom for ResourceStates {
     fn unpack(src: Self::Repr) -> Self {
         ResourceStates::from_bits(src).unwrap()
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum TextureUsage {
-    RenderTarget {
-        color: Option<[f32; 4]>,
-        srv: bool,
-        uav: bool,
-    },
-    DepthTarget {
-        color: Option<(f32, u8)>,
-        srv: bool,
-    },
-    ShaderResource,
-    Storage,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct SubresourceIndex {
-    pub array_index: usize,
-    pub mip_index: usize,
 }

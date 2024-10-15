@@ -14,8 +14,8 @@ use crate::graphics::{
 };
 
 use super::{
-    buffer::BaseBuffer, BufferResource, BufferResourceDesc, GpuOnlyDescriptorAccess, Resource,
-    ResourceDesc, ResourceStates,
+    buffer::BaseBuffer, BufferResource, BufferResourceDesc, Resource, ResourceDesc, ResourceStates,
+    ViewAccess,
 };
 
 #[derive(Clone, Debug)]
@@ -34,7 +34,7 @@ pub struct CounterBufferInner {
     buffer: BaseBuffer,
     count: usize,
 
-    access: GpuOnlyDescriptorAccess,
+    access: ViewAccess,
     srv: OnceLock<GpuView<SrvView>>,
     uav: OnceLock<GpuView<UavView>>,
 }
@@ -45,7 +45,7 @@ impl CounterBuffer {
         desc: CounterBufferDesc,
         state: ResourceStates,
         allocation: Option<Allocation>,
-        access: GpuOnlyDescriptorAccess,
+        access: ViewAccess,
     ) -> Self {
         Self(Arc::new(CounterBufferInner {
             buffer: BaseBuffer {
@@ -109,7 +109,7 @@ impl CounterBuffer {
 
 impl Resource for CounterBuffer {
     type Desc = CounterBufferDesc;
-    type Access = GpuOnlyDescriptorAccess;
+    type Access = ViewAccess;
 
     fn get_raw(&self) -> &dx::Resource {
         &self.buffer.raw

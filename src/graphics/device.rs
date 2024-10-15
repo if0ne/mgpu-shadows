@@ -14,9 +14,11 @@ use super::{
         BufferResource, BufferResourceDesc, ImageResource, ImageResourceDesc, Resource,
         ResourceStates, ShareableBuffer, ShareableImage, SharedResource,
     },
-    swapchain::{Swapchain, SwapchainDesc},
-    types::MemoryHeapType,
-    utils::{BufferCopyableFootprints, MipInfo, TextureCopyableFootprints}, views::ViewAllocator,
+    swapchain::Swapchain,
+    types::{
+        BufferCopyableFootprints, MemoryHeapType, MipInfo, SwapchainDesc, TextureCopyableFootprints,
+    },
+    views::ViewAllocator,
 };
 
 #[derive(Clone, Debug)]

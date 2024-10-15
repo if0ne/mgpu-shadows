@@ -5,7 +5,10 @@ use parking_lot::Mutex;
 
 use crate::graphics::device::Device;
 
-use super::{heap::ViewHeap, CbvSrvUavView, CbvView, DsvView, GpuView, RtvView, SamplerView, SrvView, UavView};
+use super::{
+    heap::ViewHeap, CbvSrvUavView, CbvView, DsvView, GpuView, RtvView, SamplerView, SrvView,
+    UavView,
+};
 
 #[derive(Clone, Debug)]
 pub struct ViewAllocator(Arc<DescriptorAllocatorInner>);

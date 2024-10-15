@@ -21,8 +21,8 @@ use crate::graphics::{
 
 use super::{
     staging_buffer::{StagingBuffer, StagingBufferDesc},
-    GpuOnlyDescriptorAccess, ImageResource, ImageResourceDesc, NoGpuAccess, Resource, ResourceDesc,
-    ResourceStates, ShareableImage, ShareableImageDesc, SubresourceIndex, TextureUsage,
+    ImageResource, ImageResourceDesc, NoGpuAccess, Resource, ResourceDesc, ResourceStates,
+    ShareableImage, ShareableImageDesc, SubresourceIndex, TextureUsage, ViewAccess,
 };
 
 #[derive(Clone, Debug)]
@@ -52,7 +52,7 @@ pub struct ImageInner {
     cached_dsv: Mutex<HashMap<ImageViewDesc<DsvView>, GpuView<DsvView>>>,
     cached_srv: Mutex<HashMap<ImageViewDesc<SrvView>, GpuView<SrvView>>>,
     cached_uav: Mutex<HashMap<ImageViewDesc<UavView>, GpuView<UavView>>>,
-    access: GpuOnlyDescriptorAccess,
+    access: ViewAccess,
 
     footprint: TextureCopyableFootprints,
     staging_buffer: StagingBuffer<u8>,
@@ -63,7 +63,7 @@ impl Image {
         device: &Device,
         resource: dx::Resource,
         desc: ImageDesc,
-        access: GpuOnlyDescriptorAccess,
+        access: ViewAccess,
         state: ResourceStates,
         allocation: Option<Allocation>,
     ) -> Self {
@@ -327,7 +327,7 @@ impl Drop for ImageInner {
 
 impl Resource for Image {
     type Desc = ImageDesc;
-    type Access = GpuOnlyDescriptorAccess;
+    type Access = ViewAccess;
 
     fn get_raw(&self) -> &dx::Resource {
         &self.raw

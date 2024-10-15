@@ -1,6 +1,6 @@
 mod allocator;
-mod view;
 mod heap;
+mod view;
 
 pub use allocator::*;
 pub use view::*;

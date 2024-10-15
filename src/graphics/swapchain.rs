@@ -5,7 +5,9 @@ use oxidx::dx::{self, IFactory4, ISwapchain1, ISwapchain3, OUTPUT_NONE};
 use super::{
     commands::{CommandQueue, Graphics},
     device::Device,
-    resources::{Image, ImageDesc, ResourceStates, TextureUsage}, views::{DsvView, GpuView, RtvView, SrvView, ViewAllocator},
+    resources::{Image, ImageDesc, ResourceStates},
+    types::{PresentMode, SwapchainDesc, TextureUsage},
+    views::{DsvView, GpuView, RtvView, SrvView, ViewAllocator},
 };
 
 #[derive(Debug)]
@@ -13,7 +15,7 @@ pub struct Swapchain {
     raw: dx::Swapchain3,
     device: Device,
     queue: CommandQueue<Graphics>,
-    descriptor_allocator: ViewAllocator,
+    view_allocator: ViewAllocator,
 
     images: Vec<SwapchainImage>,
     depth: Image,
@@ -23,30 +25,24 @@ pub struct Swapchain {
 }
 
 impl Swapchain {
-    pub(super) fn inner_new(
+    pub(crate) fn inner_new(
         device: Device,
         queue: CommandQueue<Graphics>,
-        descriptor_allocator: ViewAllocator,
+        access: ViewAllocator,
         hwnd: NonZero<isize>,
         desc: SwapchainDesc,
     ) -> Self {
         let raw = device
             .factory
-            .create_swapchain_for_hwnd(
-                &*queue.raw.lock(),
-                hwnd,
-                &desc.clone().into(),
-                None,
-                OUTPUT_NONE,
-            )
+            .create_swapchain_for_hwnd(&*queue.raw.lock(), hwnd, &desc.as_raw(), None, OUTPUT_NONE)
             .unwrap();
 
         let images = (0..desc.buffer_count)
             .map(|i| {
                 let raw = raw.get_buffer(i).unwrap();
                 SwapchainImage {
-                    rtv: descriptor_allocator.push_rtv(&raw, None),
-                    raw,
+                    rtv: access.push_rtv(&raw, None),
+                    raw: Some(raw),
                     srv: Default::default(),
                     last_access: 0,
                 }
@@ -60,7 +56,7 @@ impl Swapchain {
                     srv: true,
                 },
             ),
-            descriptor_allocator.clone().into(),
+            access.clone().into(),
             ResourceStates::DepthWrite,
         );
 
@@ -68,7 +64,7 @@ impl Swapchain {
             raw: raw.try_into().unwrap(),
             device,
             queue,
-            descriptor_allocator,
+            view_allocator: access,
             images,
             depth,
             desc,
@@ -86,13 +82,14 @@ impl Swapchain {
     }
 
     pub fn get_rendet_target_as_srv(&self, index: usize) -> GpuView<SrvView> {
-        if let Some(srv) = self.images[index].srv.get() {
+        let image = &self.images[index];
+        if let Some(srv) = image.srv.get() {
             srv
         } else {
             let handle = self
-                .descriptor_allocator
-                .push_srv(&self.images[index].raw, None);
-            self.images[index].srv.set(Some(handle));
+                .view_allocator
+                .push_srv(image.raw.as_ref().unwrap(), None);
+            image.srv.set(Some(handle));
             handle
         }
     }
@@ -116,42 +113,74 @@ impl Swapchain {
         self.images[self.current_back_buffer].last_access = self.queue.fence.get_current_value();
         self.current_back_buffer = self.raw.get_current_back_buffer_index() as usize;
     }
-}
 
-#[derive(Clone, Debug)]
-pub struct SwapchainDesc {
-    pub width: u32,
-    pub height: u32,
-    pub format: dx::Format,
-    pub buffer_count: usize,
-    pub present_mode: PresentMode,
-}
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.images
+            .iter_mut()
+            .for_each(|image| image.invalidate(&self.view_allocator));
 
-#[derive(Clone, Debug)]
-pub enum PresentMode {
-    Immediate,
-    Mailbox,
-    Fifo,
-}
-
-impl From<SwapchainDesc> for dx::SwapchainDesc1 {
-    fn from(value: SwapchainDesc) -> Self {
-        Self::new(value.width, value.height)
-            .with_format(value.format)
-            .with_buffer_count(value.buffer_count)
-            .with_usage(dx::FrameBufferUsage::RenderTargetOutput)
-            .with_scaling(dx::Scaling::Stretch)
-            .with_swap_effect(dx::SwapEffect::FlipDiscard)
-            .with_flags(
+        self.desc.width = width;
+        self.desc.height = height;
+        self.raw
+            .resize_buffers(
+                self.desc.buffer_count,
+                width,
+                height,
+                self.desc.format,
                 dx::SwapchainFlags::AllowTearing | dx::SwapchainFlags::FrameLatencyWaitableObject,
             )
+            .unwrap();
+
+        self.images.iter_mut().enumerate().for_each(|(i, image)| {
+            let raw = self.raw.get_buffer(i).unwrap();
+            image.set_new(raw, &self.view_allocator);
+        });
+
+        self.depth = self.device.create_commited_resource(
+            ImageDesc::new(width, height, dx::Format::D24UnormS8Uint).with_usage(
+                TextureUsage::DepthTarget {
+                    color: Some((1.0, 0)),
+                    srv: true,
+                },
+            ),
+            self.view_allocator.clone().into(),
+            ResourceStates::DepthWrite,
+        );
+    }
+}
+
+impl Drop for Swapchain {
+    fn drop(&mut self) {
+        self.images
+            .iter_mut()
+            .for_each(|i| i.invalidate(&self.view_allocator));
     }
 }
 
 #[derive(Debug)]
 pub struct SwapchainImage {
-    raw: dx::Resource,
+    raw: Option<dx::Resource>,
     rtv: GpuView<RtvView>,
     srv: Cell<Option<GpuView<SrvView>>>,
     last_access: u64,
+}
+
+impl SwapchainImage {
+    fn invalidate(&mut self, allocator: &ViewAllocator) {
+        if self.raw.is_none() {
+            return;
+        }
+
+        self.raw = None;
+        allocator.remove_rtv(self.rtv);
+
+        if let Some(srv) = self.srv.get_mut().take() {
+            allocator.remove_srv(srv);
+        }
+    }
+
+    fn set_new(&mut self, raw: dx::Resource, allocator: &ViewAllocator) {
+        self.raw = Some(raw);
+        self.rtv = allocator.push_rtv(&raw, None);
+    }
 }

@@ -4,7 +4,9 @@ use oxidx::dx;
 
 use crate::graphics::device::Device;
 
-use super::{CbvSrvUavView, CbvView, DsvView, GpuView, RtvView, SamplerView, SrvView, UavView, ViewType};
+use super::{
+    CbvSrvUavView, CbvView, DsvView, GpuView, RtvView, SamplerView, SrvView, UavView, ViewType,
+};
 
 #[derive(Debug)]
 pub struct ViewHeap<T: ViewType> {
