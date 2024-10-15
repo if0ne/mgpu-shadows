@@ -165,13 +165,20 @@ impl<T> Resource for StorageBuffer<T> {
 
     fn from_raw_placed(
         heap: &MemoryHeap,
-        raw: dx::Resource,
         desc: Self::Desc,
         access: Self::Access,
         state: ResourceStates,
         allocation: Allocation,
     ) -> Self {
         assert!(allocation.heap.mtype == MemoryHeapType::Gpu);
+
+        let raw_desc = desc.clone().into();
+
+        let raw = heap
+            .device
+            .raw
+            .create_placed_resource(&heap.heap, allocation.offset, &raw_desc, state, None)
+            .unwrap();
 
         Self::inner_new(&heap.device, raw, desc, state, Some(allocation), access)
     }

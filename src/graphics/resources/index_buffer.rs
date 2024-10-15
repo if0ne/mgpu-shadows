@@ -188,10 +188,9 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
 
     fn from_raw_placed(
         heap: &MemoryHeap,
-        raw: dx::Resource,
         desc: Self::Desc,
         _access: Self::Access,
-        mut state: ResourceStates,
+        _state: ResourceStates,
         allocation: Allocation,
     ) -> Self {
         assert!(
@@ -199,9 +198,19 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
                 || allocation.heap.mtype == MemoryHeapType::Gpu
         );
 
-        if allocation.heap.mtype == MemoryHeapType::Cpu {
-            state = ResourceStates::GenericRead;
-        }
+        let state = if allocation.heap.mtype == MemoryHeapType::Cpu {
+            ResourceStates::GenericRead
+        } else {
+            ResourceStates::IndexBuffer
+        };
+
+        let raw_desc = desc.clone().into();
+
+        let raw = heap
+            .device
+            .raw
+            .create_placed_resource(&heap.heap, allocation.offset, &raw_desc, state, None)
+            .unwrap();
 
         Self::inner_new(&heap.device, raw, desc, state, Some(allocation))
     }

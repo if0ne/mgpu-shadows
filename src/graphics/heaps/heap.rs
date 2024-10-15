@@ -44,24 +44,15 @@ impl MemoryHeap {
         }))
     }
 
-    pub(in super::super) fn create_placed_buffer<R: BufferResource>(
+    pub(crate) fn create_placed_buffer<R: BufferResource>(
         &self,
         desc: R::Desc,
         offset: usize,
         access: R::Access,
         initial_state: ResourceStates,
     ) -> R {
-        let raw_desc = desc.clone().into();
-
-        let resource: dx::Resource = self
-            .device
-            .raw
-            .create_placed_resource(&self.heap, offset, &raw_desc, initial_state.as_raw(), None)
-            .unwrap();
-
         R::from_raw_placed(
             self,
-            resource,
             desc,
             access,
             initial_state,
@@ -73,30 +64,15 @@ impl MemoryHeap {
         )
     }
 
-    pub(in super::super) fn create_placed_texture<R: ImageResource>(
+    pub(crate) fn create_placed_texture<R: ImageResource>(
         &self,
         desc: R::Desc,
         offset: usize,
         access: R::Access,
         initial_state: ResourceStates,
     ) -> R {
-        let raw_desc = desc.clone().into();
-
-        let resource: dx::Resource = self
-            .device
-            .raw
-            .create_placed_resource(
-                &self.heap,
-                offset,
-                &raw_desc,
-                initial_state.as_raw(),
-                desc.clear_color().as_ref(),
-            )
-            .unwrap();
-
         R::from_raw_placed(
             self,
-            resource,
             desc,
             access,
             initial_state,

@@ -157,20 +157,27 @@ impl<T: Clone> Resource for StagingBuffer<T> {
     }
 
     fn from_raw_placed(
-        _heap: &MemoryHeap,
-        raw: dx::Resource,
+        heap: &MemoryHeap,
         desc: Self::Desc,
         _access: Self::Access,
-        state: ResourceStates,
+        _state: ResourceStates,
         allocation: Allocation,
     ) -> Self {
         assert!(allocation.heap.mtype == MemoryHeapType::Cpu);
 
-        if desc.readback {
-            assert_eq!(state, ResourceStates::CopyDst);
+        let state = if desc.readback {
+            ResourceStates::CopyDst
         } else {
-            assert!(state == ResourceStates::GenericRead);
-        }
+            ResourceStates::GenericRead
+        };
+
+        let raw_desc = desc.clone().into();
+
+        let raw = heap
+            .device
+            .raw
+            .create_placed_resource(&heap.heap, allocation.offset, &raw_desc, state, None)
+            .unwrap();
 
         Self::inner_new(raw, desc, state, Some(allocation))
     }

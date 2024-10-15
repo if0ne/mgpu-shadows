@@ -184,8 +184,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
     }
 
     fn from_raw_placed(
-        _heap: &MemoryHeap,
-        raw: dx::Resource,
+        heap: &MemoryHeap,
         desc: Self::Desc,
         access: Self::Access,
         _state: ResourceStates,
@@ -195,6 +194,20 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
             assert!(std::mem::align_of::<T>() == 256);
         };
         assert!(allocation.heap.mtype == MemoryHeapType::Cpu);
+
+        let raw_desc = desc.clone().into();
+
+        let raw = heap
+            .device
+            .raw
+            .create_placed_resource(
+                &heap.heap,
+                allocation.offset,
+                &raw_desc,
+                ResourceStates::GenericRead,
+                None,
+            )
+            .unwrap();
 
         Self::inner_new(
             raw,

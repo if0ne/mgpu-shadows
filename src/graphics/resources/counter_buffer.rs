@@ -141,16 +141,35 @@ impl Resource for CounterBuffer {
     }
 
     fn from_raw_placed(
-        _heap: &MemoryHeap,
-        raw: dx::Resource,
+        heap: &MemoryHeap,
         desc: Self::Desc,
         access: Self::Access,
-        state: ResourceStates,
+        _state: ResourceStates,
         allocation: Allocation,
     ) -> Self {
         assert!(allocation.heap.mtype == MemoryHeapType::Gpu);
 
-        Self::inner_new(raw, desc, state, Some(allocation), access)
+        let raw_desc = desc.clone().into();
+
+        let raw = heap
+            .device
+            .raw
+            .create_placed_resource(
+                &heap.heap,
+                allocation.offset,
+                &raw_desc,
+                ResourceStates::GenericRead,
+                None,
+            )
+            .unwrap();
+
+        Self::inner_new(
+            raw,
+            desc,
+            ResourceStates::GenericRead,
+            Some(allocation),
+            access,
+        )
     }
 }
 
