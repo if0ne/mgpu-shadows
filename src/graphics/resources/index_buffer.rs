@@ -8,7 +8,7 @@ use crate::graphics::{
     device::Device,
     heaps::{Allocation, MemoryHeap},
     types::MemoryHeapType,
-    ResourceStates,
+    ResourceStates, Sealed,
 };
 
 use super::{
@@ -17,7 +17,7 @@ use super::{
     BufferResource, BufferResourceDesc, NoGpuAccess, Resource, ResourceDesc,
 };
 
-pub trait IndexBufferType: Clone {
+pub trait IndexBufferType: Sealed + Clone {
     type Raw: Clone + Copy + Debug;
 
     fn format() -> dx::Format;
@@ -25,6 +25,7 @@ pub trait IndexBufferType: Clone {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct U16;
+impl Sealed for U16 {}
 impl IndexBufferType for U16 {
     type Raw = u16;
 
@@ -35,6 +36,7 @@ impl IndexBufferType for U16 {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct U32;
+impl Sealed for U32 {}
 impl IndexBufferType for U32 {
     type Raw = u32;
 
@@ -46,14 +48,6 @@ impl IndexBufferType for U32 {
 #[derive(Clone, Debug)]
 pub struct IndexBuffer<T: IndexBufferType>(Arc<IndexBufferInner<T>>);
 
-impl<T: IndexBufferType> Deref for IndexBuffer<T> {
-    type Target = IndexBufferInner<T>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 #[derive(Debug)]
 pub struct IndexBufferInner<T: IndexBufferType> {
     buffer: BaseBuffer,
@@ -61,6 +55,14 @@ pub struct IndexBufferInner<T: IndexBufferType> {
     view: dx::IndexBufferView,
     staging_buffer: Option<StagingBuffer<T::Raw>>,
     marker: PhantomData<T>,
+}
+
+impl<T: IndexBufferType> Deref for IndexBuffer<T> {
+    type Target = IndexBufferInner<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl<T: IndexBufferType> IndexBuffer<T> {
@@ -176,7 +178,7 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
                 &dx::HeapProperties::default(),
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
-                init_state.into(),
+                init_state.as_raw(),
                 None,
             )
             .unwrap();
