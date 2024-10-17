@@ -271,9 +271,7 @@ impl StaticSampler {
 }
 
 #[derive(Clone, Debug)]
-pub struct SamplerDesc {
-
-}
+pub struct SamplerDesc {}
 
 impl SamplerDesc {
     pub(crate) fn as_raw(&self) -> dx::SamplerDesc {

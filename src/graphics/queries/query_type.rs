@@ -2,9 +2,12 @@ use std::{fmt::Debug, marker::PhantomData};
 
 use oxidx::dx;
 
-use crate::graphics::commands::{Compute, Graphics, Transfer, WorkerType};
+use crate::graphics::{
+    commands::{Compute, Graphics, Transfer, WorkerType},
+    Sealed,
+};
 
-pub trait QueryHeapType {
+pub trait QueryHeapType: Sealed {
     const RAW: dx::QueryHeapType;
     const MUL: usize;
 
@@ -15,6 +18,8 @@ pub trait QueryHeapType {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TimestampQuery<T: WorkerType>(PhantomData<T>);
+
+impl<T: WorkerType> Sealed for TimestampQuery<T> {}
 
 impl QueryHeapType for TimestampQuery<Graphics> {
     const RAW: dx::QueryHeapType = dx::QueryHeapType::Timestamp;

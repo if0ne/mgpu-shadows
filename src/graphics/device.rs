@@ -1,17 +1,26 @@
 #![allow(private_bounds)]
 #![allow(private_interfaces)]
 
-use std::{num::NonZero, ops::Deref, sync::Arc};
+use std::{num::NonZero, ops::Deref, path::Path, sync::Arc};
 
 use oxidx::dx::{self, IAdapter3, IDevice};
 
 use super::{
-    commands::{CommandAllocator, CommandQueue, Compute, Graphics, Transfer, WorkerType}, fence::{Fence, LocalFence, SharedFence}, heaps::MemoryHeap, query::{QueryHeap, QueryHeapType}, resources::{
+    commands::{CommandAllocator, CommandQueue, Compute, Graphics, Transfer, WorkerType},
+    fence::{Fence, LocalFence, SharedFence},
+    heaps::MemoryHeap,
+    queries::{QueryHeap, QueryHeapType},
+    resources::{
         BufferResource, BufferResourceDesc, ImageResource, ImageResourceDesc, Resource,
         ShareableBuffer, ShareableImage, SharedResource,
-    }, swapchain::Swapchain, types::{
+    },
+    swapchain::Swapchain,
+    types::{
         BufferCopyableFootprints, MemoryHeapType, MipInfo, SwapchainDesc, TextureCopyableFootprints,
-    }, views::ViewAllocator, BindingType, PipelineLayout, ResourceStates, Sampler, SamplerDesc, StaticSampler
+    },
+    views::ViewAllocator,
+    BindingType, PipelineLayout, Pixel, ResourceStates, Sampler, SamplerDesc, Shader, ShaderType,
+    StaticSampler, Vertex,
 };
 
 #[derive(Clone, Debug)]
@@ -178,6 +187,33 @@ impl Device {
 
     pub fn create_sampler(&self, allocator: ViewAllocator, desc: &SamplerDesc) -> Sampler {
         Sampler::inner_new(allocator, desc)
+    }
+
+    pub fn create_shader<T: ShaderType>(
+        &self,
+        path: impl AsRef<Path>,
+        entry_point: impl AsRef<str>,
+        defines: &[(&'static str, &'static str)],
+    ) -> Shader<T> {
+        Shader::inner_new(path, entry_point, defines)
+    }
+
+    pub fn create_vertex_shader(
+        &self,
+        path: impl AsRef<Path>,
+        entry_point: impl AsRef<str>,
+        defines: &[(&'static str, &'static str)],
+    ) -> Shader<Vertex> {
+        Shader::inner_new(path, entry_point, defines)
+    }
+
+    pub fn create_pixel_shader(
+        &self,
+        path: impl AsRef<Path>,
+        entry_point: impl AsRef<str>,
+        defines: &[(&'static str, &'static str)],
+    ) -> Shader<Pixel> {
+        Shader::inner_new(path, entry_point, defines)
     }
 
     pub fn get_buffer_copyable_footprints<T: BufferResourceDesc>(
