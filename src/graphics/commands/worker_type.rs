@@ -9,9 +9,9 @@ pub trait WorkerType: Sealed {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Graphics;
-impl Sealed for Graphics {}
-impl WorkerType for Graphics {
+pub struct Direct;
+impl Sealed for Direct {}
+impl WorkerType for Direct {
     const RAW_TYPE: dx::CommandListType = dx::CommandListType::Direct;
 
     fn queue_desc() -> dx::CommandQueueDesc {

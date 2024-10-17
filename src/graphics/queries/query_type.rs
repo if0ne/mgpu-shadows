@@ -3,7 +3,7 @@ use std::{fmt::Debug, marker::PhantomData};
 use oxidx::dx;
 
 use crate::graphics::{
-    commands::{Compute, Graphics, Transfer, WorkerType},
+    commands::{Compute, Direct, Transfer, WorkerType},
     Sealed,
 };
 
@@ -21,7 +21,7 @@ pub struct TimestampQuery<T: WorkerType>(PhantomData<T>);
 
 impl<T: WorkerType> Sealed for TimestampQuery<T> {}
 
-impl QueryHeapType for TimestampQuery<Graphics> {
+impl QueryHeapType for TimestampQuery<Direct> {
     const RAW: dx::QueryHeapType = dx::QueryHeapType::Timestamp;
     const MUL: usize = 2;
     type Type = u64;

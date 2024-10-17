@@ -6,7 +6,7 @@ use std::{num::NonZero, ops::Deref, path::Path, sync::Arc};
 use oxidx::dx::{self, IAdapter3, IDevice};
 
 use super::{
-    commands::{CommandAllocator, CommandQueue, Compute, Graphics, Transfer, WorkerType},
+    commands::{CommandAllocator, CommandQueue, Compute, Direct, Transfer, WorkerType},
     fence::{Fence, LocalFence, SharedFence},
     heaps::MemoryHeap,
     queries::{QueryHeap, QueryHeapType},
@@ -19,8 +19,8 @@ use super::{
         BufferCopyableFootprints, MemoryHeapType, MipInfo, SwapchainDesc, TextureCopyableFootprints,
     },
     views::ViewAllocator,
-    BindingType, PipelineLayout, Pixel, ResourceStates, Sampler, SamplerDesc, Shader, ShaderType,
-    StaticSampler, Vertex,
+    BindingType, Graphics, GraphicsPipelineDesc, Pipeline, PipelineLayout, Pixel, ResourceStates,
+    Sampler, SamplerDesc, Shader, ShaderType, StaticSampler, Vertex,
 };
 
 #[derive(Clone, Debug)]
@@ -70,7 +70,7 @@ impl Device {
 }
 
 impl Device {
-    pub fn create_graphics_command_queue(&self, fence: Fence) -> CommandQueue<Graphics> {
+    pub fn create_graphics_command_queue(&self, fence: Fence) -> CommandQueue<Direct> {
         CommandQueue::inner_new(self.clone(), fence)
     }
 
@@ -161,7 +161,7 @@ impl Device {
 
     pub fn create_swapchain(
         &self,
-        queue: CommandQueue<Graphics>,
+        queue: CommandQueue<Direct>,
         descriptor_allocator: ViewAllocator,
         hwnd: NonZero<isize>,
         desc: SwapchainDesc,
@@ -196,6 +196,10 @@ impl Device {
         defines: &[(&'static str, &'static str)],
     ) -> Shader<T> {
         Shader::inner_new(path, entry_point, defines)
+    }
+
+    pub fn create_graphics_pipeline(&self, desc: &GraphicsPipelineDesc) -> Pipeline<Graphics> {
+        Pipeline::inner_new_graphics(self, desc)
     }
 
     pub fn create_vertex_shader(

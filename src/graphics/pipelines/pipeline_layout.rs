@@ -1,7 +1,7 @@
 use oxidx::dx::{self, IDevice};
 use smallvec::SmallVec;
 
-use super::{BindingType, Device, StaticSampler};
+use crate::graphics::{BindingType, Device, StaticSampler};
 
 #[derive(Clone, Debug)]
 pub struct PipelineLayout {

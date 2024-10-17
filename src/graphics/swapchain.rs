@@ -3,7 +3,7 @@ use std::{cell::Cell, num::NonZero};
 use oxidx::dx::{self, IFactory4, ISwapchain1, ISwapchain3, OUTPUT_NONE};
 
 use super::{
-    commands::{CommandQueue, Graphics},
+    commands::{CommandQueue, Direct},
     device::Device,
     resources::{Image, ImageDesc},
     types::{PresentMode, SwapchainDesc, TextureUsage},
@@ -15,7 +15,7 @@ use super::{
 pub struct Swapchain {
     raw: dx::Swapchain3,
     device: Device,
-    queue: CommandQueue<Graphics>,
+    queue: CommandQueue<Direct>,
     view_allocator: ViewAllocator,
 
     images: Vec<SwapchainImage>,
@@ -28,7 +28,7 @@ pub struct Swapchain {
 impl Swapchain {
     pub(crate) fn inner_new(
         device: Device,
-        queue: CommandQueue<Graphics>,
+        queue: CommandQueue<Direct>,
         access: ViewAllocator,
         hwnd: NonZero<isize>,
         desc: SwapchainDesc,

@@ -26,13 +26,13 @@ impl<T: WorkerType> CommandAllocator<T> {
 #[cfg(test)]
 #[allow(dead_code)]
 mod tests {
-    use crate::graphics::commands::worker_type::{Compute, Graphics, Transfer};
+    use crate::graphics::commands::worker_type::{Compute, Direct, Transfer};
 
     use super::CommandAllocator;
 
     const fn is_send<T: Send>() {}
 
-    const _: () = is_send::<CommandAllocator<Graphics>>();
+    const _: () = is_send::<CommandAllocator<Direct>>();
     const _: () = is_send::<CommandAllocator<Compute>>();
     const _: () = is_send::<CommandAllocator<Transfer>>();
 }

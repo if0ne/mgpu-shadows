@@ -2,6 +2,8 @@ use atomig::Atom;
 use oxidx::dx;
 use smallvec::SmallVec;
 
+use super::{PipelineLayout, Pixel, Shader, Vertex};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MemoryHeapType {
     Gpu,
@@ -276,5 +278,27 @@ pub struct SamplerDesc {}
 impl SamplerDesc {
     pub(crate) fn as_raw(&self) -> dx::SamplerDesc {
         dx::SamplerDesc::default()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct GraphicsPipelineDesc {
+    pub layout: PipelineLayout,
+    pub vs: Shader<Vertex>,
+    pub ps: Option<Shader<Pixel>>,
+}
+
+impl GraphicsPipelineDesc {
+    pub(crate) fn as_raw(&self) -> dx::GraphicsPipelineDesc {
+        let desc =
+            dx::GraphicsPipelineDesc::new(&self.vs.raw).with_root_signature(&self.layout.raw);
+
+        let desc = if let Some(ps) = &self.ps {
+            desc.with_ps(&ps.raw)
+        } else {
+            desc
+        };
+
+        desc
     }
 }

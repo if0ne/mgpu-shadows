@@ -176,13 +176,13 @@ impl<T: WorkerType> Deref for CommandQueue<T> {
 #[cfg(test)]
 #[allow(unused)]
 mod tests {
-    use crate::graphics::commands::worker_type::{Compute, Graphics, Transfer};
+    use crate::graphics::commands::worker_type::{Compute, Direct, Transfer};
 
     use super::CommandQueue;
 
     const fn is_send_sync<T: Send + Sync>() {}
 
-    const _: () = is_send_sync::<CommandQueue<Graphics>>();
+    const _: () = is_send_sync::<CommandQueue<Direct>>();
     const _: () = is_send_sync::<CommandQueue<Compute>>();
     const _: () = is_send_sync::<CommandQueue<Transfer>>();
 }

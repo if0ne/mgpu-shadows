@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use super::{
     command_allocator::CommandAllocator,
-    worker_type::{Compute, Graphics, Transfer, WorkerType},
+    worker_type::{Compute, Direct, Transfer, WorkerType},
 };
 
 use crate::graphics::{
@@ -46,7 +46,7 @@ impl<T: WorkerType> WorkerThread<T> {
     }
 }
 
-impl Deref for WorkerThread<Graphics> {
+impl Deref for WorkerThread<Direct> {
     type Target = WorkerThread<Compute>;
 
     fn deref(&self) -> &Self::Target {
@@ -69,7 +69,7 @@ impl<T: WorkerType> WorkerThread<T> {
     }
 }
 
-impl WorkerThread<Graphics> {
+impl WorkerThread<Direct> {
     pub fn clear_rt(&self, handle: dx::CpuDescriptorHandle, color: [f32; 4]) {
         self.list.clear_render_target_view(handle, color, &[]);
     }
