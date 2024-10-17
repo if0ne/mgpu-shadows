@@ -6,20 +6,12 @@ use std::{num::NonZero, ops::Deref, sync::Arc};
 use oxidx::dx::{self, IAdapter3, IDevice};
 
 use super::{
-    commands::{CommandAllocator, CommandQueue, Compute, Graphics, Transfer, WorkerType},
-    fence::{Fence, LocalFence, SharedFence},
-    heaps::MemoryHeap,
-    query::{QueryHeap, QueryHeapType},
-    resources::{
+    commands::{CommandAllocator, CommandQueue, Compute, Graphics, Transfer, WorkerType}, fence::{Fence, LocalFence, SharedFence}, heaps::MemoryHeap, query::{QueryHeap, QueryHeapType}, resources::{
         BufferResource, BufferResourceDesc, ImageResource, ImageResourceDesc, Resource,
         ShareableBuffer, ShareableImage, SharedResource,
-    },
-    swapchain::Swapchain,
-    types::{
+    }, swapchain::Swapchain, types::{
         BufferCopyableFootprints, MemoryHeapType, MipInfo, SwapchainDesc, TextureCopyableFootprints,
-    },
-    views::ViewAllocator,
-    BindingType, PipelineLayout, ResourceStates, StaticSampler,
+    }, views::ViewAllocator, BindingType, PipelineLayout, ResourceStates, Sampler, SamplerDesc, StaticSampler
 };
 
 #[derive(Clone, Debug)]
@@ -182,6 +174,10 @@ impl Device {
         static_samplers: &[StaticSampler],
     ) -> PipelineLayout {
         PipelineLayout::inner_new(self, layout, static_samplers)
+    }
+
+    pub fn create_sampler(&self, allocator: ViewAllocator, desc: &SamplerDesc) -> Sampler {
+        Sampler::inner_new(allocator, desc)
     }
 
     pub fn get_buffer_copyable_footprints<T: BufferResourceDesc>(

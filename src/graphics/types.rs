@@ -261,10 +261,22 @@ impl BindingTable {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct StaticSampler {}
 
 impl StaticSampler {
     pub(crate) fn as_raw(&self) -> dx::StaticSamplerDesc {
         dx::StaticSamplerDesc::default()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SamplerDesc {
+
+}
+
+impl SamplerDesc {
+    pub(crate) fn as_raw(&self) -> dx::SamplerDesc {
+        dx::SamplerDesc::default()
     }
 }

@@ -8,6 +8,7 @@ mod resources;
 mod swapchain;
 mod types;
 mod views;
+mod sampler;
 
 mod utils;
 
@@ -21,5 +22,6 @@ pub use resources::*;
 pub use swapchain::*;
 pub use types::*;
 pub use views::*;
+pub use sampler::*;
 
 pub(crate) trait Sealed {}
