@@ -19,7 +19,7 @@ use super::{
         BufferCopyableFootprints, MemoryHeapType, MipInfo, SwapchainDesc, TextureCopyableFootprints,
     },
     views::ViewAllocator,
-    ResourceStates,
+    BindingType, PipelineLayout, ResourceStates, StaticSampler,
 };
 
 #[derive(Clone, Debug)]
@@ -174,6 +174,14 @@ impl Device {
 
     pub fn is_cross_adapter_texture_supported(&self) -> bool {
         self.is_cross_adapter_texture_supported
+    }
+
+    pub fn create_pipeline_layout(
+        &self,
+        layout: &[BindingType],
+        static_samplers: &[StaticSampler],
+    ) -> PipelineLayout {
+        PipelineLayout::inner_new(self, layout, static_samplers)
     }
 
     pub fn get_buffer_copyable_footprints<T: BufferResourceDesc>(

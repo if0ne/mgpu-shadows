@@ -1,5 +1,6 @@
 use atomig::Atom;
 use oxidx::dx;
+use smallvec::SmallVec;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MemoryHeapType {
@@ -162,5 +163,108 @@ impl Atom for ResourceStates {
 
     fn unpack(src: Self::Repr) -> Self {
         ResourceStates::from_bits(src).unwrap()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum BindingType<'a> {
+    Cbv {
+        slot: u32,
+        space: u32,
+        visibility: dx::ShaderVisibility,
+    },
+    Srv {
+        slot: u32,
+        space: u32,
+        visibility: dx::ShaderVisibility,
+    },
+    Uav {
+        slot: u32,
+        space: u32,
+        visibility: dx::ShaderVisibility,
+    },
+    PushConstant {
+        slot: u32,
+        space: u32,
+        count: u32,
+        visibility: dx::ShaderVisibility,
+    },
+    Table {
+        entries: &'a [BindingTable],
+        visibility: dx::ShaderVisibility,
+    },
+}
+
+impl<'a> BindingType<'a> {
+    pub(crate) fn as_raw<'b>(&self, ranges: &'b [dx::DescriptorRange]) -> dx::RootParameter<'b> {
+        match self {
+            BindingType::Cbv {
+                slot,
+                space,
+                visibility,
+            } => dx::RootParameter::cbv(*slot, *space).with_visibility(*visibility),
+            BindingType::Srv {
+                slot,
+                space,
+                visibility,
+            } => dx::RootParameter::srv(*slot, *space).with_visibility(*visibility),
+            BindingType::Uav {
+                slot,
+                space,
+                visibility,
+            } => dx::RootParameter::uav(*slot, *space).with_visibility(*visibility),
+            BindingType::PushConstant {
+                slot,
+                space,
+                count,
+                visibility,
+            } => dx::RootParameter::constant_32bit(*slot, *space, *count)
+                .with_visibility(*visibility),
+            BindingType::Table { visibility, .. } => {
+                dx::RootParameter::descriptor_table(ranges).with_visibility(*visibility)
+            }
+        }
+    }
+
+    pub(crate) fn get_ranges(&self) -> SmallVec<[dx::DescriptorRange; 4]> {
+        match self {
+            BindingType::Table { entries, .. } => entries.into_iter().map(|e| e.as_raw()).collect(),
+            _ => Default::default(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum BindingTable {
+    Cbv { slot: u32, space: u32, count: u32 },
+    Srv { slot: u32, space: u32, count: u32 },
+    Uav { slot: u32, space: u32, count: u32 },
+    Sampler { slot: u32, space: u32, count: u32 },
+}
+
+impl BindingTable {
+    pub(crate) fn as_raw(&self) -> dx::DescriptorRange {
+        match self {
+            BindingTable::Cbv { slot, space, count } => dx::DescriptorRange::cbv(*count)
+                .with_base_shader_register(*slot)
+                .with_register_space(*space),
+            BindingTable::Srv { slot, space, count } => dx::DescriptorRange::srv(*count)
+                .with_base_shader_register(*slot)
+                .with_register_space(*space),
+            BindingTable::Uav { slot, space, count } => dx::DescriptorRange::uav(*count)
+                .with_base_shader_register(*slot)
+                .with_register_space(*space),
+            BindingTable::Sampler { slot, space, count } => dx::DescriptorRange::sampler(*count)
+                .with_base_shader_register(*slot)
+                .with_register_space(*space),
+        }
+    }
+}
+
+pub struct StaticSampler {}
+
+impl StaticSampler {
+    pub(crate) fn as_raw(&self) -> dx::StaticSamplerDesc {
+        dx::StaticSamplerDesc::default()
     }
 }
