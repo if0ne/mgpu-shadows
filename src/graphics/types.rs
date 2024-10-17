@@ -247,18 +247,18 @@ pub enum BindingTable {
 impl BindingTable {
     pub(crate) fn as_raw(&self) -> dx::DescriptorRange {
         match self {
-            BindingTable::Cbv { slot, space, count } => dx::DescriptorRange::cbv(*count)
-                .with_base_shader_register(*slot)
-                .with_register_space(*space),
-            BindingTable::Srv { slot, space, count } => dx::DescriptorRange::srv(*count)
-                .with_base_shader_register(*slot)
-                .with_register_space(*space),
-            BindingTable::Uav { slot, space, count } => dx::DescriptorRange::uav(*count)
-                .with_base_shader_register(*slot)
-                .with_register_space(*space),
-            BindingTable::Sampler { slot, space, count } => dx::DescriptorRange::sampler(*count)
-                .with_base_shader_register(*slot)
-                .with_register_space(*space),
+            BindingTable::Cbv { slot, space, count } => {
+                dx::DescriptorRange::cbv(*count, *slot).with_register_space(*space)
+            }
+            BindingTable::Srv { slot, space, count } => {
+                dx::DescriptorRange::srv(*count, *slot).with_register_space(*space)
+            }
+            BindingTable::Uav { slot, space, count } => {
+                dx::DescriptorRange::uav(*count, *slot).with_register_space(*space)
+            }
+            BindingTable::Sampler { slot, space, count } => {
+                dx::DescriptorRange::sampler(*count, *slot).with_register_space(*space)
+            }
         }
     }
 }
