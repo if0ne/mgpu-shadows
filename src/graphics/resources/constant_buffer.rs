@@ -204,7 +204,7 @@ impl<T: Clone> Resource for ConstantBuffer<T> {
                 &heap.heap,
                 allocation.offset,
                 &raw_desc,
-                ResourceStates::GenericRead,
+                ResourceStates::GenericRead.as_raw(),
                 None,
             )
             .unwrap();
@@ -240,9 +240,9 @@ impl<T> ConstantBufferDesc<T> {
     }
 }
 
-impl<T> Into<dx::ResourceDesc> for ConstantBufferDesc<T> {
-    fn into(self) -> dx::ResourceDesc {
-        dx::ResourceDesc::buffer(self.count * size_of::<T>())
+impl<T> From<ConstantBufferDesc<T>> for dx::ResourceDesc {
+    fn from(val: ConstantBufferDesc<T>) -> Self {
+        dx::ResourceDesc::buffer(val.count * size_of::<T>())
     }
 }
 

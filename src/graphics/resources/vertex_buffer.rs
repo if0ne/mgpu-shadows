@@ -161,7 +161,7 @@ impl<T: Clone> Resource for VertexBuffer<T> {
         heap: &MemoryHeap,
         desc: Self::Desc,
         _access: Self::Access,
-        mut state: ResourceStates,
+        _state: ResourceStates,
         allocation: Allocation,
     ) -> Self {
         assert!(
@@ -180,7 +180,13 @@ impl<T: Clone> Resource for VertexBuffer<T> {
         let raw = heap
             .device
             .raw
-            .create_placed_resource(&heap.heap, allocation.offset, &raw_desc, state, None)
+            .create_placed_resource(
+                &heap.heap,
+                allocation.offset,
+                &raw_desc,
+                state.as_raw(),
+                None,
+            )
             .unwrap();
 
         Self::inner_new(&heap.device, raw, desc, state, Some(allocation))
@@ -229,9 +235,9 @@ impl<T> VertexBufferDesc<T> {
     }
 }
 
-impl<T> Into<dx::ResourceDesc> for VertexBufferDesc<T> {
-    fn into(self) -> dx::ResourceDesc {
-        dx::ResourceDesc::buffer(self.count * size_of::<T>())
+impl<T> From<VertexBufferDesc<T>> for dx::ResourceDesc {
+    fn from(val: VertexBufferDesc<T>) -> Self {
+        dx::ResourceDesc::buffer(val.count * size_of::<T>())
     }
 }
 

@@ -3,7 +3,7 @@ use std::{ops::Deref, sync::Arc};
 
 use crate::graphics::{
     device::Device,
-    resources::{BufferResource, ImageResource, ImageResourceDesc},
+    resources::{BufferResource, ImageResource},
     types::MemoryHeapType,
     ResourceStates,
 };
@@ -38,8 +38,8 @@ impl MemoryHeap {
 
         Self(Arc::new(MemoryHeapInner {
             device,
-            heap: heap,
-            size: size,
+            heap,
+            size,
             mtype,
         }))
     }
@@ -58,7 +58,7 @@ impl MemoryHeap {
             initial_state,
             Allocation {
                 heap: self.clone(),
-                offset: offset,
+                offset,
                 size: self.size,
             },
         )
@@ -78,7 +78,7 @@ impl MemoryHeap {
             initial_state,
             Allocation {
                 heap: self.clone(),
-                offset: offset,
+                offset,
                 size: self.size,
             },
         )

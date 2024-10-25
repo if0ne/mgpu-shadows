@@ -94,7 +94,7 @@ impl<T> StorageBuffer<T> {
                 dx::BufferSrvFlags::empty(),
             )),
         );
-        self.srv.set(handle);
+        self.srv.set(handle).unwrap();
 
         handle
     }
@@ -116,7 +116,7 @@ impl<T> StorageBuffer<T> {
                 dx::BufferUavFlags::empty(),
             )),
         );
-        self.uav.set(handle);
+        self.uav.set(handle).unwrap();
 
         handle
     }
@@ -177,7 +177,13 @@ impl<T> Resource for StorageBuffer<T> {
         let raw = heap
             .device
             .raw
-            .create_placed_resource(&heap.heap, allocation.offset, &raw_desc, state, None)
+            .create_placed_resource(
+                &heap.heap,
+                allocation.offset,
+                &raw_desc,
+                state.as_raw(),
+                None,
+            )
             .unwrap();
 
         Self::inner_new(&heap.device, raw, desc, state, Some(allocation), access)
@@ -228,9 +234,9 @@ impl<T> StorageBufferDesc<T> {
     }
 }
 
-impl<T> Into<dx::ResourceDesc> for StorageBufferDesc<T> {
-    fn into(self) -> dx::ResourceDesc {
-        dx::ResourceDesc::buffer(self.count * size_of::<T>())
+impl<T> From<StorageBufferDesc<T>> for dx::ResourceDesc {
+    fn from(val: StorageBufferDesc<T>) -> Self {
+        dx::ResourceDesc::buffer(val.count * size_of::<T>())
     }
 }
 

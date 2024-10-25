@@ -230,7 +230,7 @@ impl<'a> BindingType<'a> {
 
     pub(crate) fn get_ranges(&self) -> SmallVec<[dx::DescriptorRange; 4]> {
         match self {
-            BindingType::Table { entries, .. } => entries.into_iter().map(|e| e.as_raw()).collect(),
+            BindingType::Table { entries, .. } => entries.iter().map(|e| e.as_raw()).collect(),
             _ => Default::default(),
         }
     }

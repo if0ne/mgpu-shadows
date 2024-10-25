@@ -148,7 +148,7 @@ impl<T: Clone> Resource for StagingBuffer<T> {
                 &heap_props,
                 dx::HeapFlags::empty(),
                 &dx::ResourceDesc::buffer(desc.count * element_byte_size),
-                init_state.into(),
+                init_state.as_raw(),
                 None,
             )
             .unwrap();
@@ -176,7 +176,13 @@ impl<T: Clone> Resource for StagingBuffer<T> {
         let raw = heap
             .device
             .raw
-            .create_placed_resource(&heap.heap, allocation.offset, &raw_desc, state, None)
+            .create_placed_resource(
+                &heap.heap,
+                allocation.offset,
+                &raw_desc,
+                state.as_raw(),
+                None,
+            )
             .unwrap();
 
         Self::inner_new(raw, desc, state, Some(allocation))
@@ -225,9 +231,9 @@ impl<T> StagingBufferDesc<T> {
     }
 }
 
-impl<T> Into<dx::ResourceDesc> for StagingBufferDesc<T> {
-    fn into(self) -> dx::ResourceDesc {
-        dx::ResourceDesc::buffer(self.count * size_of::<T>())
+impl<T> From<StagingBufferDesc<T>> for dx::ResourceDesc {
+    fn from(val: StagingBufferDesc<T>) -> Self {
+        dx::ResourceDesc::buffer(val.count * size_of::<T>())
     }
 }
 

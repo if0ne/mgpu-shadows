@@ -110,7 +110,7 @@ impl Device {
         access: R::Access,
         init_state: ResourceStates,
     ) -> R {
-        R::from_desc(&self, desc, access, init_state)
+        R::from_desc(self, desc, access, init_state)
     }
 
     pub fn create_placed_buffer<R: BufferResource>(

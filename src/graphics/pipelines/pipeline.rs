@@ -18,7 +18,7 @@ pub struct PipelineInner<T: PipelineType> {
 impl Pipeline<Graphics> {
     pub(crate) fn inner_new_graphics(device: &Device, desc: &GraphicsPipelineDesc) -> Self {
         let desc = &desc.as_raw();
-        let raw = device.raw.create_graphics_pipeline(&desc).unwrap();
+        let raw = device.raw.create_graphics_pipeline(desc).unwrap();
 
         Self(Arc::new(PipelineInner {
             raw,

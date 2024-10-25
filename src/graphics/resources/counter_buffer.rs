@@ -80,7 +80,7 @@ impl CounterBuffer {
                 dx::BufferSrvFlags::Raw,
             )),
         );
-        self.srv.set(handle);
+        self.srv.set(handle).unwrap();
 
         handle
     }
@@ -102,7 +102,7 @@ impl CounterBuffer {
                 dx::BufferUavFlags::Raw,
             )),
         );
-        self.uav.set(handle);
+        self.uav.set(handle).unwrap();
 
         handle
     }
@@ -158,7 +158,7 @@ impl Resource for CounterBuffer {
                 &heap.heap,
                 allocation.offset,
                 &raw_desc,
-                ResourceStates::GenericRead,
+                ResourceStates::GenericRead.as_raw(),
                 None,
             )
             .unwrap();
@@ -204,9 +204,9 @@ impl CounterBufferDesc {
     }
 }
 
-impl Into<dx::ResourceDesc> for CounterBufferDesc {
-    fn into(self) -> dx::ResourceDesc {
-        dx::ResourceDesc::buffer(self.count * 4)
+impl From<CounterBufferDesc> for dx::ResourceDesc {
+    fn from(val: CounterBufferDesc) -> Self {
+        dx::ResourceDesc::buffer(val.count * 4)
     }
 }
 

@@ -1,22 +1,13 @@
 use std::num::NonZero;
 
-use mgpu_shadows::graphics::{
-    command_queue::{Graphics, Transfer},
-    device::Device,
-    heaps::MemoryHeapType,
-    query::{QueryResolver, TimestampQuery},
-    resources::{Image, ImageDesc, ResourceStates, SharedResource, TextureUsage, ViewAccess},
-    swapchain::Swapchain,
-};
+use mgpu_shadows::graphics::*;
 use oxidx::dx::{
     create_debug, create_factory4, Debug, Factory4, FactoryCreationFlags, Format, IDebug,
-    IFactory4, Rect, Viewport,
+    IDebugExt, IFactory4, Rect, Viewport,
 };
 use winit::{
-    application::ApplicationHandler,
-    event::{DeviceEvent, DeviceId, MouseButton, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
-    keyboard::{KeyCode, PhysicalKey},
+    event::MouseButton,
+    keyboard::KeyCode,
     window::Window,
 };
 
@@ -27,19 +18,15 @@ fn main() {
 
     let debug: Debug = create_debug().unwrap();
     debug.enable_debug_layer();
+    debug.set_callback(Box::new(|_, level, _, message| {
+        println!("{:?} {}", level, message);
+    }));
 
     let gpu1 = Device::new(factory, adapter);
-    let heap1 = gpu1.create_heap(1920 * 1080 * 3, MemoryHeapType::Shared);
+    let heap1 = gpu1.create_heap(1920 * 1080, MemoryHeapType::Shared);
     let desc1 = gpu1.create_descriptor_allocator(8, 8, 8, 8);
 
-    let factory: Factory4 = create_factory4(FactoryCreationFlags::Debug).unwrap();
-    let adapter = factory.enum_warp_adapters().unwrap();
-
-    let gpu2 = Device::new(factory, adapter);
-    let heap2 = heap1.connect(gpu2.clone());
-    let desc2 = gpu2.create_descriptor_allocator(8, 8, 8, 8);
-
-    let res1: SharedResource<Image> = gpu1.create_shared_image(
+    let _res1: SharedResource<Image> = gpu1.create_shared_image(
         &heap1,
         0,
         ImageDesc::new(1920, 1080, Format::R8Unorm).with_usage(TextureUsage::RenderTarget {
@@ -51,36 +38,9 @@ fn main() {
         ResourceStates::RenderTarget,
         ResourceStates::CopyDst,
     );
-
-    let res2 = res1.connect_texture(
-        &heap2,
-        0,
-        ViewAccess(desc2.clone()),
-        ResourceStates::RenderTarget,
-        ResourceStates::CopyDst,
-    );
-
-    let fence = gpu1.create_fence();
-    let queue = gpu1.create_graphics_command_queue(fence.clone().into());
-
-    let query = gpu1.create_query_heap::<TimestampQuery<Graphics>>(1);
-
-    let worker = queue.get_worker_thread(None);
-
-    worker.begin_query(&query, 0);
-
-    queue.push_worker(worker);
-    queue.wait_on_cpu(queue.execute());
-
-    let worker = queue.get_worker_thread(None);
-    worker.end_query(&query, 0);
-    let res = worker.resolve_query(&query, 0..1);
-    queue.push_worker(worker);
-    dbg!(res);
-    queue.wait_on_cpu(queue.execute());
 }
 
-#[derive(Debug)]
+/*#[derive(Debug)]
 pub struct SwapchainContext {
     pub window: Window,
     pub hwnd: NonZero<isize>,
@@ -230,3 +190,4 @@ pub fn run_sample<S: DxSample>() {
     };
     event_loop.run_app(&mut app).unwrap();
 }
+*/

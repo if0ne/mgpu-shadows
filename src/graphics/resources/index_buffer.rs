@@ -209,7 +209,13 @@ impl<T: IndexBufferType> Resource for IndexBuffer<T> {
         let raw = heap
             .device
             .raw
-            .create_placed_resource(&heap.heap, allocation.offset, &raw_desc, state, None)
+            .create_placed_resource(
+                &heap.heap,
+                allocation.offset,
+                &raw_desc,
+                state.as_raw(),
+                None,
+            )
             .unwrap();
 
         Self::inner_new(&heap.device, raw, desc, state, Some(allocation))
@@ -258,9 +264,9 @@ impl<T: IndexBufferType> IndexBufferDesc<T> {
     }
 }
 
-impl<T: IndexBufferType> Into<dx::ResourceDesc> for IndexBufferDesc<T> {
-    fn into(self) -> dx::ResourceDesc {
-        dx::ResourceDesc::buffer(self.count * size_of::<T>())
+impl<T: IndexBufferType> From<IndexBufferDesc<T>> for dx::ResourceDesc {
+    fn from(val: IndexBufferDesc<T>) -> Self {
+        dx::ResourceDesc::buffer(val.count * size_of::<T>())
     }
 }
 

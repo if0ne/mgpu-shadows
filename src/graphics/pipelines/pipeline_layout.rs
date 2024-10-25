@@ -31,7 +31,7 @@ impl PipelineLayout {
 
         let desc = dx::RootSignatureDesc::default()
             .with_parameters(&params)
-            .with_sampler(&samplers)
+            .with_samplers(&samplers)
             .with_flags(dx::RootSignatureFlags::AllowInputAssemblerInputLayout);
 
         let raw = device

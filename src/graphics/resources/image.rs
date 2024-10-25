@@ -378,8 +378,8 @@ impl Resource for Image {
                 &heap.heap,
                 allocation.offset,
                 &raw_desc,
-                state,
-                desc.clear_color(),
+                state.as_raw(),
+                desc.clear_color().as_ref(),
             )
             .unwrap();
 
@@ -499,14 +499,14 @@ impl ImageDesc {
     }
 }
 
-impl Into<dx::ResourceDesc> for ImageDesc {
-    fn into(self) -> dx::ResourceDesc {
-        dx::ResourceDesc::texture_2d(self.width, self.height)
-            .with_array_size(self.count as u16)
-            .with_format(self.format)
-            .with_flags(self.flags)
-            .with_layout(self.layout)
-            .with_mip_levels(self.mip_levels as u16)
+impl From<ImageDesc> for dx::ResourceDesc {
+    fn from(val: ImageDesc) -> Self {
+        dx::ResourceDesc::texture_2d(val.width, val.height)
+            .with_array_size(val.count as u16)
+            .with_format(val.format)
+            .with_flags(val.flags)
+            .with_layout(val.layout)
+            .with_mip_levels(val.mip_levels as u16)
     }
 }
 
